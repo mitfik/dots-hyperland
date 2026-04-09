@@ -12,22 +12,13 @@ set -e
 
 #####################################################################################
 showhelp_global(){
-printf "${STY_CYAN}NOTE:
-  The old \"./install.sh\"   is now \"./setup install\"
-  The old \"./update.sh\"    is now \"./setup exp-update\"
-  The old \"./uninstall.sh\" is now \"./setup uninstall\"${STY_RST}
-
-[$0]: Handle setup for illogical-impulse.
+printf "${STY_CYAN}[$0]: Handle setup for illogical-impulse.
 
 Syntax:
   $0 <subcommand> [OPTIONS]...
 
 Subcommands:
-  install        (Re)Install/Update illogical-impulse.
-                 Note: To update to the latest, manually run \"git stash && git pull\" first.
-  install-deps   Run the install step \"1. Install dependencies\"
-  install-setups Run the install step \"2. Setup for permissions/services etc\"
-  install-files  Run the install step \"3. Copying config files\"
+  install        Run the new TUI installer (requires Go binary in installer/).
   resetfirstrun  Reset firstrun state.
   uninstall      Uninstall illogical-impulse.
 
@@ -35,7 +26,6 @@ Subcommands:
   exp-merge      (Experimental) Merge upstream changes with local configs using git rebase.
 
   virtmon        (For dev only) Create virtual monitors for testing multi-monitors.
-  checkdeps      (For dev only) Check whether pkgs exist in AUR or repos of Arch.
 
   help           Show this help message.
 
@@ -48,15 +38,23 @@ ${STY_BOLD}${STY_CYAN}Access ${STY_UNDERLINE}https://ii.clsty.link${STY_RST} ${S
 case $1 in
   # Global help
   ""|help|--help|-h)showhelp_global;exit;;
-  # Correct subcommand
-  install|uninstall|exp-update|exp-merge|resetfirstrun|checkdeps|virtmon)
+  # Install now uses the Go TUI installer
+  install|install-deps|install-setups|install-files)
+    INSTALLER="${REPO_ROOT}/installer/ii-installer"
+    if [[ ! -x "${INSTALLER}" ]]; then
+      printf "${STY_CYAN}Building the installer...${STY_RST}\n"
+      if ! command -v go &>/dev/null; then
+        printf "${STY_RED}Go is required to build the installer. Install it with: sudo pacman -S go${STY_RST}\n"
+        exit 1
+      fi
+      (cd "${REPO_ROOT}/installer" && go build -o ii-installer .) || exit 1
+    fi
+    exec "${INSTALLER}"
+    ;;
+  # Other subcommands
+  uninstall|exp-update|exp-merge|resetfirstrun|virtmon)
     SUBCMD_NAME=$1
     SUBCMD_DIR=./sdata/subcmd-$1
-    shift;;
-  # Correct subcommand but not using ./sdata/subcmd-$1
-  install-deps|install-setups|install-files)
-    SUBCMD_NAME=$1
-    SUBCMD_DIR=./sdata/subcmd-install
     shift;;
   # Wrong subcommand
   *)printf "${STY_RED}Unknown subcommand \"$1\".${STY_RST}\n";showhelp_global;exit 1;;
@@ -65,66 +63,4 @@ esac
 if [[ -f "${SUBCMD_DIR}/options.sh" ]];
   then source "${SUBCMD_DIR}/options.sh"
 fi
-case ${SUBCMD_NAME} in
-  install)
-    for function in ${print_os_group_id_functions[@]}; do
-      $function
-    done
-    pause
-    # Initialize sudo keepalive for the entire install process
-    sudo_init_keepalive
-    # Set trap to cleanup when this subcommand exits
-    trap sudo_stop_keepalive EXIT INT TERM
-    if [[ "${SKIP_ALLGREETING}" != true ]]; then
-      source ${SUBCMD_DIR}/0.greeting.sh
-    fi
-    if [[ "${SKIP_ALLDEPS}" != true ]]; then
-      source ${SUBCMD_DIR}/1.deps-router.sh
-    fi
-    if [[ "${SKIP_ALLSETUPS}" != true ]]; then
-      source ${SUBCMD_DIR}/2.setups.sh
-    fi
-    if [[ "${SKIP_ALLFILES}" != true ]]; then
-      source ${SUBCMD_DIR}/3.files.sh
-    fi
-    ;;
-  install-deps)
-    for function in ${print_os_group_id_functions[@]}; do
-      $function
-    done
-    pause
-    # Initialize sudo keepalive for dependency installation
-    sudo_init_keepalive
-    # Set trap to cleanup when this subcommand exits
-    trap sudo_stop_keepalive EXIT INT TERM
-    if [[ "${SKIP_ALLDEPS}" != true ]]; then
-      source ${SUBCMD_DIR}/1.deps-router.sh
-    fi
-    ;;
-  install-setups)
-    for function in ${print_os_group_id_functions[@]}; do
-      $function
-    done
-    pause
-    # Initialize sudo keepalive for setup steps
-    sudo_init_keepalive
-    # Set trap to cleanup when this subcommand exits
-    trap sudo_stop_keepalive EXIT INT TERM
-    if [[ "${SKIP_ALLSETUPS}" != true ]]; then
-      source ${SUBCMD_DIR}/2.setups.sh
-    fi
-    ;;
-  install-files)
-    for function in ${print_os_group_id_functions[@]}; do
-      $function
-    done
-    pause
-    if [[ "${SKIP_ALLFILES}" != true ]]; then
-      source ${SUBCMD_DIR}/3.files.sh
-    fi
-    ;;
-  *)
-    source ${SUBCMD_DIR}/0.run.sh
-    exit
-    ;;
-esac
+source ${SUBCMD_DIR}/0.run.sh
