@@ -17,7 +17,7 @@ var FeaturePackages = map[string][]string{
 		"hyprland", "hyprsunset", "wl-clipboard",
 	},
 	"quickshell": {
-		"cpptrace", "jemalloc", "mesa",
+		"quickshell-git", "cpptrace", "jemalloc", "mesa",
 		"qt6-declarative", "qt6-base", "qt6-svg",
 		"libdrm", "libpipewire", "libxcb", "wayland",
 		"qt6-5compat", "qt6-avif-image-plugin", "qt6-imageformats",
@@ -77,7 +77,6 @@ var FeaturePackages = map[string][]string{
 // (replaced by direct package installation).
 var DeprecatedPackages = []string{
 	// Old -git packages
-	"quickshell-git",
 	"hyprutils-git",
 	"hyprpicker-git",
 	"hyprlang-git",

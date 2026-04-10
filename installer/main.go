@@ -18,6 +18,7 @@ type step int
 
 const (
 	stepWelcome step = iota
+	stepMode
 	stepDistro
 	stepFeatures
 	stepConfigs
@@ -25,6 +26,14 @@ const (
 	stepInstall
 	stepFiles
 	stepDone
+)
+
+// installMode controls what the installer does.
+type installMode int
+
+const (
+	modeFullInstall installMode = iota
+	modeConfigsOnly
 )
 
 // FeatureGroup represents an installable feature group.
@@ -48,6 +57,10 @@ type model struct {
 	step          step
 	width, height int
 	program       *tea.Program
+
+	// Mode
+	mode    installMode
+	modeCur int
 
 	// Distro
 	distro DistroInfo
@@ -256,6 +269,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.step {
 	case stepWelcome:
 		return m.updateWelcome(msg)
+	case stepMode:
+		return m.updateMode(msg)
 	case stepDistro:
 		return m.updateDistro(msg)
 	case stepFeatures:
@@ -312,7 +327,7 @@ func (m *model) viewCancelConfirm() string {
 func (m *model) updateWelcome(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if key, ok := msg.(tea.KeyMsg); ok {
 		if key.String() == "enter" || key.String() == " " {
-			m.step = stepDistro
+			m.step = stepMode
 		}
 	}
 	return m, nil
@@ -333,6 +348,67 @@ func (m *model) viewWelcome() string {
 	return boxStyle.Render(s)
 }
 
+// --- Step: Mode ---
+
+func (m *model) updateMode(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if key, ok := msg.(tea.KeyMsg); ok {
+		switch key.String() {
+		case "up", "k":
+			if m.modeCur > 0 {
+				m.modeCur--
+			}
+		case "down", "j":
+			if m.modeCur < 1 {
+				m.modeCur++
+			}
+		case "enter", " ":
+			m.mode = installMode(m.modeCur)
+			if m.mode == modeConfigsOnly {
+				m.step = stepConfigs
+			} else {
+				m.step = stepDistro
+			}
+		case "backspace":
+			m.step = stepWelcome
+		}
+	}
+	return m, nil
+}
+
+func (m *model) viewMode() string {
+	s := titleStyle.Render("Install Mode") + "\n"
+	s += subtitleStyle.Render("What would you like to do?") + "\n\n"
+
+	type modeOption struct {
+		name string
+		desc string
+	}
+	options := []modeOption{
+		{"Full Install", "Install packages, configure system, and deploy config files"},
+		{"Deploy Configs Only", "Skip package installation — just copy config files (fast)"},
+	}
+
+	for i, opt := range options {
+		cursor := "  "
+		if i == m.modeCur {
+			cursor = accentStyle.Render("> ")
+		}
+
+		name := opt.name
+		if i == m.modeCur {
+			name = lipgloss.NewStyle().Bold(true).Render(name)
+		}
+
+		s += fmt.Sprintf("%s%s\n", cursor, name)
+		if i == m.modeCur {
+			s += "    " + dimStyle.Render(opt.desc) + "\n"
+		}
+	}
+
+	s += "\n" + dimStyle.Render("j/k: navigate  •  Enter: select  •  Backspace: back  •  Esc: cancel")
+	return boxStyle.Render(s)
+}
+
 // --- Step: Distro ---
 
 func (m *model) updateDistro(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -341,7 +417,7 @@ func (m *model) updateDistro(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			m.step = stepFeatures
 		case "backspace":
-			m.step = stepWelcome
+			m.step = stepMode
 		}
 	}
 	return m, nil
@@ -461,9 +537,17 @@ func (m *model) updateConfigs(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.configs[i].Enabled = false
 			}
 		case "enter":
+			if m.mode == modeConfigsOnly {
+				// Skip install, go straight to file scanning
+				return m, m.scanFiles()
+			}
 			m.step = stepConfirm
 		case "backspace":
-			m.step = stepFeatures
+			if m.mode == modeConfigsOnly {
+				m.step = stepMode
+			} else {
+				m.step = stepFeatures
+			}
 		}
 	}
 	return m, nil
@@ -765,6 +849,8 @@ func (m *model) View() string {
 	switch m.step {
 	case stepWelcome:
 		content = m.viewWelcome()
+	case stepMode:
+		content = m.viewMode()
 	case stepDistro:
 		content = m.viewDistro()
 	case stepFeatures:
@@ -782,15 +868,40 @@ func (m *model) View() string {
 	}
 
 	// Step indicator
-	steps := []string{"Welcome", "System", "Features", "Configs", "Confirm", "Install", "Files", "Done"}
+	type stepLabel struct {
+		s    step
+		name string
+	}
+	var steps []stepLabel
+	if m.mode == modeConfigsOnly && m.step > stepMode {
+		steps = []stepLabel{
+			{stepWelcome, "Welcome"},
+			{stepMode, "Mode"},
+			{stepConfigs, "Configs"},
+			{stepFiles, "Files"},
+			{stepDone, "Done"},
+		}
+	} else {
+		steps = []stepLabel{
+			{stepWelcome, "Welcome"},
+			{stepMode, "Mode"},
+			{stepDistro, "System"},
+			{stepFeatures, "Features"},
+			{stepConfigs, "Configs"},
+			{stepConfirm, "Confirm"},
+			{stepInstall, "Install"},
+			{stepFiles, "Files"},
+			{stepDone, "Done"},
+		}
+	}
 	var indicator string
-	for i, name := range steps {
-		if step(i) == m.step {
-			indicator += accentStyle.Render(name)
-		} else if step(i) < m.step {
-			indicator += selectedStyle.Render(name)
+	for i, sl := range steps {
+		if sl.s == m.step {
+			indicator += accentStyle.Render(sl.name)
+		} else if sl.s < m.step {
+			indicator += selectedStyle.Render(sl.name)
 		} else {
-			indicator += dimStyle.Render(name)
+			indicator += dimStyle.Render(sl.name)
 		}
 		if i < len(steps)-1 {
 			indicator += dimStyle.Render(" > ")
