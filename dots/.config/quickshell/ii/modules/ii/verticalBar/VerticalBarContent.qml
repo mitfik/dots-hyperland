@@ -127,6 +127,11 @@ Item { // Bar content region
             }
         }
 
+        Bar.SpecialWorkspaces {
+            vertical: true
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+
         HorizontalBarSeparator {
             visible: Config.options?.bar.borderless
         }

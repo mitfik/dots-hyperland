@@ -588,6 +588,16 @@ Singleton {
                 property bool centerTitle: true
             }
 
+            property JsonObject specialWorkspaces: JsonObject {
+                property bool showInBar: true
+                property bool showOnlyWithWindows: true
+                property list<var> icons: [] // [{name: "steam", icon: "sports_esports"}]
+            }
+
+            property JsonObject systemd: JsonObject {
+                property list<string> services: []
+            }
+
             property JsonObject hacks: JsonObject {
                 property int arbitraryRaceConditionDelay: 20 // milliseconds
             }

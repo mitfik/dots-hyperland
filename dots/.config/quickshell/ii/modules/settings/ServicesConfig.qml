@@ -1,11 +1,104 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell.Io
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 
 ContentPage {
+    id: servicesPage
     forceWidth: true
+
+    ContentSection {
+        icon: "manufacturing"
+        title: Translation.tr("Systemd Services")
+
+        ContentSubsectionLabel {
+            text: Translation.tr("Services listed here appear as toggles in the right sidebar for quick start/stop control.")
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+
+            Repeater {
+                model: Config.options.systemd.services
+
+                RowLayout {
+                    required property int index
+                    required property string modelData
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    MaterialSymbol {
+                        text: "drag_indicator"
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.colors.colSubtext
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: modelData
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnLayer2
+                    }
+
+                    RippleButton {
+                        implicitWidth: 32
+                        implicitHeight: 32
+                        onClicked: {
+                            let services = [...Config.options.systemd.services];
+                            services.splice(index, 1);
+                            Config.options.systemd.services = services;
+                        }
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "close"
+                            iconSize: Appearance.font.pixelSize.normal
+                            color: Appearance.colors.colError
+                        }
+                    }
+                }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            MaterialTextField {
+                id: newServiceField
+                Layout.fillWidth: true
+                placeholderText: Translation.tr("Service name (e.g. docker, sshd, tailscaled)")
+                onAccepted: addServiceButton.addService()
+            }
+
+            RippleButton {
+                id: addServiceButton
+                implicitWidth: 36
+                implicitHeight: 36
+
+                function addService() {
+                    const name = newServiceField.text.trim();
+                    if (name === "") return;
+                    let services = [...Config.options.systemd.services];
+                    if (services.indexOf(name) !== -1) return;
+                    services.push(name);
+                    Config.options.systemd.services = services;
+                    newServiceField.text = "";
+                }
+
+                onClicked: addService()
+
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    text: "add"
+                    iconSize: Appearance.font.pixelSize.larger
+                    color: Appearance.colors.colPrimary
+                }
+            }
+        }
+    }
 
     ContentSection {
         icon: "neurology"

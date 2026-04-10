@@ -96,6 +96,13 @@ Item {
                 }
             }
 
+            Loader {
+                Layout.fillWidth: true
+                visible: active
+                active: Config.options.systemd.services.length > 0
+                sourceComponent: SystemdServices {}
+            }
+
             CenterWidgetGroup {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.fillHeight: true

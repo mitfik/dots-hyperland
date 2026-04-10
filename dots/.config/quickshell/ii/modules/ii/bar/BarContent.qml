@@ -150,6 +150,10 @@ Item { // Bar content region
             }
         }
 
+        SpecialWorkspaces {
+            anchors.verticalCenter: parent.verticalCenter
+        }
+
         VerticalBarSeparator {
             visible: Config.options?.bar.borderless
         }
