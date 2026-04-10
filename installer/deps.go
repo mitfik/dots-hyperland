@@ -38,7 +38,7 @@ var FeaturePackages = map[string][]string{
 		"tesseract", "tesseract-data-eng", "wf-recorder",
 	},
 	"widgets": {
-		"fuzzel", "glib2", "imagemagick",
+		"btop", "fuzzel", "glib2", "imagemagick",
 		"hypridle", "hyprlock", "hyprpicker",
 		"songrec", "translate-shell", "wlogout", "libqalculate",
 	},
