@@ -38,11 +38,11 @@ Singleton {
         ? "lan"
         : (root.wifiEnabled && root.wifiStatus === "connected")
             ? (
-                (root.active?.strength ?? 0) > 83 ? "signal_wifi_4_bar" :
-                (root.active?.strength ?? 0) > 67 ? "network_wifi" :
-                (root.active?.strength ?? 0) > 50 ? "network_wifi_3_bar" :
-                (root.active?.strength ?? 0) > 33 ? "network_wifi_2_bar" :
-                (root.active?.strength ?? 0) > 17 ? "network_wifi_1_bar" :
+                root.networkStrength > 83 ? "signal_wifi_4_bar" :
+                root.networkStrength > 67 ? "network_wifi" :
+                root.networkStrength > 50 ? "network_wifi_3_bar" :
+                root.networkStrength > 33 ? "network_wifi_2_bar" :
+                root.networkStrength > 17 ? "network_wifi_1_bar" :
                 "signal_wifi_0_bar"
             )
             : (root.wifiStatus === "connecting")
@@ -158,6 +158,7 @@ Singleton {
         wifiStatusProcess.running = true
         updateNetworkName.running = true;
         updateNetworkStrength.running = true;
+        getNetworks.running = true;
     }
 
     Process {
