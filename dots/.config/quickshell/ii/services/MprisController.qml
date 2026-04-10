@@ -35,6 +35,8 @@ Singleton {
         return (
             // Remove native browser buses only if plasma-browser-integration is actually active on D-Bus
             !(hasActivePlasmaIntegration && player.dbusName.startsWith('org.mpris.MediaPlayer2.firefox')) && !(hasActivePlasmaIntegration && player.dbusName.startsWith('org.mpris.MediaPlayer2.chromium')) &&
+            // Hide plasma-browser-integration only when it has no track (idle ghost from Firefox)
+            !(player.dbusName?.startsWith('org.mpris.MediaPlayer2.plasma-browser-integration') && !player.trackTitle) &&
             // playerctld just copies other buses and we don't need duplicates
             !player.dbusName?.startsWith('org.mpris.MediaPlayer2.playerctld') &&
             // Non-instance mpd bus

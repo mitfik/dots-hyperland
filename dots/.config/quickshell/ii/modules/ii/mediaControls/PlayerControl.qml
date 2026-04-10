@@ -16,6 +16,14 @@ Item { // Player instance
     id: root
     required property MprisPlayer player
     property var artUrl: player?.trackArtUrl
+
+    // D-Bus fallback for players where togglePlaying() doesn't work (e.g. radio streams)
+    Process {
+        id: mprisDbusProc
+        property string busName
+        property string method
+        command: ["dbus-send", "--print-reply", "--dest=" + busName, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player." + method]
+    }
     property string artDownloadLocation: Directories.coverArt
     property string artFileName: Qt.md5(artUrl)
     property string artFilePath: `${artDownloadLocation}/${artFileName}`
@@ -289,7 +297,12 @@ Item { // Player instance
                         property real size: 44
                         implicitWidth: size
                         implicitHeight: size
-                        downAction: () => root.player.togglePlaying();
+                        downAction: () => {
+                            // Use D-Bus PlayPause directly — works for all players including radio
+                            mprisDbusProc.busName = root.player.dbusName;
+                            mprisDbusProc.method = "PlayPause";
+                            mprisDbusProc.running = true;
+                        }
 
                         buttonRadius: root.player?.isPlaying ? Appearance?.rounding.normal : size / 2
                         colBackground: root.player?.isPlaying ? blendedColors.colPrimary : blendedColors.colSecondaryContainer
