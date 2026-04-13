@@ -31,6 +31,14 @@ Singleton {
     property int stopwatchStart: Persistent.states.timer.stopwatch.start
     property var stopwatchLaps: Persistent.states.timer.stopwatch.laps
 
+    property bool countdownRunning: Persistent.states.timer.countdown.running
+    property int countdownDuration: Persistent.states.timer.countdown.duration
+    property int countdownSecondsLeft: Persistent.states.timer.countdown.duration
+    property int countdownSetHours: Persistent.states.timer.countdown.setHours
+    property int countdownSetMinutes: Persistent.states.timer.countdown.setMinutes
+    property int countdownSetSeconds: Persistent.states.timer.countdown.setSeconds
+    property bool countdownDone: false
+
     // General
     Component.onCompleted: {
         if (!stopwatchRunning)
@@ -138,5 +146,65 @@ Singleton {
 
     function stopwatchRecordLap() {
         Persistent.states.timer.stopwatch.laps.push(stopwatchTime);
+    }
+
+    // Countdown
+    function refreshCountdown() {
+        let elapsed = getCurrentTimeInSeconds() - Persistent.states.timer.countdown.start;
+        countdownSecondsLeft = Math.max(0, countdownDuration - elapsed);
+        if (countdownSecondsLeft <= 0 && countdownRunning) {
+            Persistent.states.timer.countdown.running = false;
+            countdownDone = true;
+            Quickshell.execDetached(["notify-send", Translation.tr("Countdown"), Translation.tr("Time is up!"), "-a", "Shell", "-u", "critical"]);
+            if (Config.options.sounds.pomodoro) {
+                Audio.playSystemSound("alarm-clock-elapsed")
+            }
+        }
+    }
+
+    Timer {
+        id: countdownTimer
+        interval: 200
+        running: root.countdownRunning
+        repeat: true
+        onTriggered: refreshCountdown()
+    }
+
+    function startCountdown() {
+        let total = countdownSetHours * 3600 + countdownSetMinutes * 60 + countdownSetSeconds;
+        if (total <= 0) return;
+        Persistent.states.timer.countdown.duration = total;
+        countdownDuration = total;
+        countdownSecondsLeft = total;
+        countdownDone = false;
+        Persistent.states.timer.countdown.start = getCurrentTimeInSeconds();
+        Persistent.states.timer.countdown.running = true;
+    }
+
+    function toggleCountdown() {
+        if (countdownRunning) {
+            Persistent.states.timer.countdown.running = false;
+        } else {
+            if (countdownDone || countdownSecondsLeft === countdownDuration) {
+                startCountdown();
+            } else {
+                Persistent.states.timer.countdown.start = getCurrentTimeInSeconds() + countdownSecondsLeft - countdownDuration;
+                Persistent.states.timer.countdown.running = true;
+            }
+        }
+    }
+
+    function resetCountdown() {
+        Persistent.states.timer.countdown.running = false;
+        countdownDone = false;
+        countdownSecondsLeft = countdownDuration;
+    }
+
+    function clearCountdown() {
+        Persistent.states.timer.countdown.running = false;
+        countdownDone = false;
+        let total = countdownSetHours * 3600 + countdownSetMinutes * 60 + countdownSetSeconds;
+        countdownDuration = total;
+        countdownSecondsLeft = total;
     }
 }
