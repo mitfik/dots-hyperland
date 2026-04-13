@@ -72,6 +72,9 @@ Singleton {
                     property bool collapsed: false
                     property int tab: 0
                 }
+                property JsonObject services: JsonObject {
+                    property bool collapsed: false
+                }
             }
 
             property JsonObject booru: JsonObject {

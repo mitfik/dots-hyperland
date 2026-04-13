@@ -15,6 +15,7 @@ import qs.modules.ii.sidebarRight.quickToggles.classicStyle
 import qs.modules.ii.sidebarRight.bluetoothDevices
 import qs.modules.ii.sidebarRight.nightLight
 import qs.modules.ii.sidebarRight.volumeMixer
+import qs.modules.ii.sidebarRight.monitorManager
 import qs.modules.ii.sidebarRight.wifiNetworks
 
 Item {
@@ -27,6 +28,7 @@ Item {
     property bool showBluetoothDialog: false
     property bool showNightLightDialog: false
     property bool showWifiDialog: false
+    property bool showMonitorDialog: false
     property bool editMode: false
 
     Connections {
@@ -37,6 +39,7 @@ Item {
                 root.showBluetoothDialog = false;
                 root.showAudioOutputDialog = false;
                 root.showAudioInputDialog = false;
+                root.showMonitorDialog = false;
             }
         }
     }
@@ -160,6 +163,14 @@ Item {
         }
     }
 
+    ToggleDialog {
+        shownPropertyString: "showMonitorDialog"
+        dialog: MonitorDialog {}
+        onShownChanged: {
+            if (shown) MonitorManager.refresh();
+        }
+    }
+
     component ToggleDialog: Loader {
         id: toggleDialogLoader
         required property string shownPropertyString
@@ -210,6 +221,9 @@ Item {
             }
             function onOpenWifiDialog() {
                 root.showWifiDialog = true;
+            }
+            function onOpenMonitorDialog() {
+                root.showMonitorDialog = true;
             }
         }
     }

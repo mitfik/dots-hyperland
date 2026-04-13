@@ -8,65 +8,105 @@ import qs.modules.common.functions
 ColumnLayout {
     id: root
     spacing: 4
-    visible: serviceRepeater.count > 0
+    visible: Config.options.systemd.services.length > 0
 
-    StyledText {
-        text: Translation.tr("Services")
-        font.pixelSize: Appearance.font.pixelSize.small
-        font.weight: 600
-        color: Appearance.colors.colOnLayer1
-        Layout.leftMargin: 4
+    property bool collapsed: Persistent.states.sidebar.services.collapsed
+
+    function setCollapsed(state) {
+        Persistent.states.sidebar.services.collapsed = state;
     }
 
-    Repeater {
-        id: serviceRepeater
-        model: Config.options.systemd.services
+    Item {
+        Layout.fillWidth: true
+        Layout.leftMargin: 4
+        Layout.rightMargin: 4
+        implicitHeight: headerRow.implicitHeight
 
-        RippleButton {
-            id: serviceButton
-            required property int index
-            required property string modelData
-            property var state: Systemd.getState(modelData)
+        RowLayout {
+            id: headerRow
+            anchors.fill: parent
+            spacing: 4
 
-            Layout.fillWidth: true
-            implicitHeight: contentLayout.implicitHeight + 12
+            StyledText {
+                text: Translation.tr("Services")
+                font.pixelSize: Appearance.font.pixelSize.small
+                font.weight: 600
+                color: Appearance.colors.colOnLayer1
+            }
 
-            onClicked: Systemd.toggle(modelData)
+            Item { Layout.fillWidth: true }
 
-            contentItem: RowLayout {
-                id: contentLayout
-                spacing: 10
-                anchors.fill: parent
-                anchors.leftMargin: 8
-                anchors.rightMargin: 8
+            MaterialSymbol {
+                text: root.collapsed ? "expand_more" : "expand_less"
+                iconSize: Appearance.font.pixelSize.small
+                color: Appearance.colors.colOnLayer1
+                Layout.alignment: Qt.AlignVCenter
+            }
+        }
 
-                MaterialSymbol {
-                    text: serviceButton.state.loading ? "sync" : serviceButton.state.active ? "stop_circle" : "play_circle"
-                    iconSize: Appearance.font.pixelSize.larger
-                    fill: serviceButton.state.active ? 1 : 0
-                    color: serviceButton.state.active ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer2
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.setCollapsed(!root.collapsed)
+        }
+    }
 
-                    RotationAnimation on rotation {
-                        running: serviceButton.state.loading
-                        from: 0
-                        to: 360
-                        duration: 1000
-                        loops: Animation.Infinite
-                    }
-                }
+    Loader {
+        id: serviceListLoader
+        Layout.fillWidth: true
+        active: !root.collapsed
+        visible: active
+        sourceComponent: ColumnLayout {
+            spacing: 4
+            Repeater {
+                model: Config.options.systemd.services
+                RippleButton {
+                    id: serviceButton
+                    required property int index
+                    required property string modelData
+                    property var state: Systemd.getState(modelData)
 
-                StyledText {
                     Layout.fillWidth: true
-                    text: serviceButton.modelData
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnLayer2
-                    elide: Text.ElideRight
-                }
+                    implicitHeight: contentLayout.implicitHeight + 12
 
-                StyledText {
-                    text: serviceButton.state.loading ? Translation.tr("...") : serviceButton.state.active ? Translation.tr("Active") : Translation.tr("Inactive")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: serviceButton.state.active ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                    onClicked: Systemd.toggle(modelData)
+
+                    contentItem: RowLayout {
+                        id: contentLayout
+                        spacing: 10
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+
+                        MaterialSymbol {
+                            text: serviceButton.state.loading ? "sync" : serviceButton.state.active ? "stop_circle" : "play_circle"
+                            iconSize: Appearance.font.pixelSize.larger
+                            fill: serviceButton.state.active ? 1 : 0
+                            color: serviceButton.state.active ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer2
+
+                            RotationAnimation on rotation {
+                                running: serviceButton.state.loading
+                                from: 0
+                                to: 360
+                                duration: 1000
+                                loops: Animation.Infinite
+                            }
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: serviceButton.modelData
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colOnLayer2
+                            elide: Text.ElideRight
+                        }
+
+                        StyledText {
+                            text: serviceButton.state.loading ? Translation.tr("...") : serviceButton.state.active ? Translation.tr("Active") : Translation.tr("Inactive")
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: serviceButton.state.active ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                        }
+                    }
                 }
             }
         }

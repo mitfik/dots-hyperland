@@ -35,5 +35,8 @@ AbstractQuickPanel {
         IdleInhibitor {}
         EasyEffectsToggle {}
         CloudflareWarp {}
+        MonitorToggle {
+            onRequestMonitorDialog: root.openMonitorDialog()
+        }
     }
 }
