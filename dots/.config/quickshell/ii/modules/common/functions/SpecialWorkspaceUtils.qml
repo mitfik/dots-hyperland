@@ -19,6 +19,7 @@ Singleton {
         // Built-in icon map
         if (name === "special") return "star";
         if (name === "communication") return "forum";
+        if (name === "im") return "forum";
         if (name === "music") return "music_cast";
         if (name === "todo") return "checklist";
         if (name === "sysmon") return "monitor_heart";
