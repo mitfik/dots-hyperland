@@ -169,6 +169,10 @@ Singleton {
                     property int setSeconds: 0
                 }
             }
+
+            property JsonObject calculator: JsonObject {
+                property list<var> history: []
+            }
         }
     }
 }

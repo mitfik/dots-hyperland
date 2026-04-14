@@ -198,6 +198,17 @@ ContentPage {
                 }
             }
             ConfigSwitch {
+                buttonIcon: "calculate"
+                text: Translation.tr("Calculator")
+                checked: Config.options.bar.utilButtons.showCalculatorToggle
+                onCheckedChanged: {
+                    Config.options.bar.utilButtons.showCalculatorToggle = checked;
+                }
+            }
+        }
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
                 buttonIcon: "mic"
                 text: Translation.tr("Mic toggle")
                 checked: Config.options.bar.utilButtons.showMicToggle
@@ -205,9 +216,6 @@ ContentPage {
                     Config.options.bar.utilButtons.showMicToggle = checked;
                 }
             }
-        }
-        ConfigRow {
-            uniform: true
             ConfigSwitch {
                 buttonIcon: "dark_mode"
                 text: Translation.tr("Dark/Light toggle")
@@ -216,6 +224,9 @@ ContentPage {
                     Config.options.bar.utilButtons.showDarkModeToggle = checked;
                 }
             }
+        }
+        ConfigRow {
+            uniform: true
             ConfigSwitch {
                 buttonIcon: "speed"
                 text: Translation.tr("Performance Profile toggle")
@@ -224,9 +235,6 @@ ContentPage {
                     Config.options.bar.utilButtons.showPerformanceProfileToggle = checked;
                 }
             }
-        }
-        ConfigRow {
-            uniform: true
             ConfigSwitch {
                 buttonIcon: "videocam"
                 text: Translation.tr("Record")
@@ -234,6 +242,23 @@ ContentPage {
                 onCheckedChanged: {
                     Config.options.bar.utilButtons.showScreenRecord = checked;
                 }
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "calculate"
+        title: Translation.tr("Calculator")
+
+        ConfigSlider {
+            buttonIcon: "format_size"
+            text: Translation.tr("Font size")
+            from: 12
+            to: 40
+            usePercentTooltip: false
+            value: Config.options.calculator.fontSize
+            onValueChanged: {
+                Config.options.calculator.fontSize = value;
             }
         }
     }

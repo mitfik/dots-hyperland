@@ -75,9 +75,25 @@ Item {
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: GlobalStates.oskOpen = !GlobalStates.oskOpen
                 MaterialSymbol {
-                    horizontalAlignment: Qt.AlignHCenter
+                    horizontalAlignment: Text.AlignHCenter
                     fill: 0
                     text: "keyboard"
+                    iconSize: Appearance.font.pixelSize.large
+                    color: Appearance.colors.colOnLayer2
+                }
+            }
+        }
+
+        Loader {
+            active: Config.options.bar.utilButtons.showCalculatorToggle
+            visible: Config.options.bar.utilButtons.showCalculatorToggle
+            sourceComponent: CircleUtilButton {
+                Layout.alignment: Qt.AlignVCenter
+                onClicked: GlobalStates.calculatorOpen = !GlobalStates.calculatorOpen
+                MaterialSymbol {
+                    horizontalAlignment: Text.AlignHCenter
+                    fill: GlobalStates.calculatorOpen ? 1 : 0
+                    text: "calculate"
                     iconSize: Appearance.font.pixelSize.large
                     color: Appearance.colors.colOnLayer2
                 }

@@ -254,6 +254,7 @@ Singleton {
                     property bool showColorPicker: false
                     property bool showMicToggle: false
                     property bool showKeyboardToggle: true
+                    property bool showCalculatorToggle: true
                     property bool showDarkModeToggle: true
                     property bool showPerformanceProfileToggle: false
                     property bool showScreenRecord: false
@@ -408,6 +409,10 @@ Singleton {
             property JsonObject osk: JsonObject {
                 property string layout: "qwerty_full"
                 property bool pinnedOnStartup: false
+            }
+
+            property JsonObject calculator: JsonObject {
+                property int fontSize: 24
             }
 
             property JsonObject overlay: JsonObject {
