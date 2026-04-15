@@ -4,9 +4,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 
-/**
- * A nice wrapper for date and time strings.
- */
 Singleton {
     id: root
 
@@ -36,19 +33,14 @@ Singleton {
     IdleInhibitor {
         id: idleInhibitor
         window: PanelWindow {
-            // Inhibitor requires a "visible" surface
-            // Actually not lol
-            implicitWidth: 0
-            implicitHeight: 0
+            implicitWidth: 1
+            implicitHeight: 1
             color: "transparent"
-            // Just in case...
+            WlrLayershell.layer: WlrLayer.Background
+            WlrLayershell.namespace: "quickshell:idle-inhibitor"
             anchors {
-                right: true
-                bottom: true
-            }
-            // Make it not interactable
-            mask: Region {
-                item: null
+                top: true
+                left: true
             }
         }
     }
