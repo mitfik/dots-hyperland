@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import Quickshell.Io
 import qs.services
 import qs.modules.common
@@ -8,6 +9,99 @@ import qs.modules.common.widgets
 ContentPage {
     id: servicesPage
     forceWidth: true
+
+    property var allSystemServices: []
+    property var _collected: ({})
+    property int _pendingCount: 0
+
+    function _parseServices(text) {
+        const lines = text.trim().split("\n");
+        const names = [];
+        for (let i = 0; i < lines.length; i++) {
+            const parts = lines[i].trim().split(/\s+/);
+            if (parts.length >= 1 && parts[0].endsWith(".service")) {
+                const name = parts[0].replace(/\.service$/, "");
+                // Skip bare templates like "syncthing@" — only keep concrete names
+                if (!name.endsWith("@")) {
+                    names.push(name);
+                }
+            }
+        }
+        return names;
+    }
+
+    function _collectResult(key, names) {
+        _collected[key] = names;
+        _pendingCount--;
+        if (_pendingCount > 0) return;
+
+        const seen = new Set();
+        const merged = [];
+        const keys = Object.keys(_collected);
+        for (let k = 0; k < keys.length; k++) {
+            const arr = _collected[keys[k]];
+            for (let i = 0; i < arr.length; i++) {
+                if (!seen.has(arr[i])) {
+                    seen.add(arr[i]);
+                    merged.push(arr[i]);
+                }
+            }
+        }
+        merged.sort();
+        allSystemServices = merged;
+    }
+
+    // System unit files (templates + static services)
+    Process {
+        id: listSystemFilesProc
+        command: ["systemctl", "list-unit-files", "--type=service", "--no-legend", "--no-pager"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                servicesPage._collectResult("systemFiles", servicesPage._parseServices(text));
+            }
+        }
+    }
+
+    // User unit files
+    Process {
+        id: listUserFilesProc
+        command: ["systemctl", "--user", "list-unit-files", "--type=service", "--no-legend", "--no-pager"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                servicesPage._collectResult("userFiles", servicesPage._parseServices(text));
+            }
+        }
+    }
+
+    // Running system units (includes instantiated templates like syncthing@mtfk)
+    Process {
+        id: listSystemUnitsProc
+        command: ["systemctl", "list-units", "--type=service", "--all", "--no-legend", "--no-pager"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                servicesPage._collectResult("systemUnits", servicesPage._parseServices(text));
+            }
+        }
+    }
+
+    // Running user units (includes instantiated templates)
+    Process {
+        id: listUserUnitsProc
+        command: ["systemctl", "--user", "list-units", "--type=service", "--all", "--no-legend", "--no-pager"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                servicesPage._collectResult("userUnits", servicesPage._parseServices(text));
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        _pendingCount = 4;
+        listSystemFilesProc.running = true;
+        listUserFilesProc.running = true;
+        listSystemUnitsProc.running = true;
+        listUserUnitsProc.running = true;
+    }
 
     ContentSection {
         icon: "manufacturing"
@@ -66,11 +160,116 @@ ContentPage {
             Layout.fillWidth: true
             spacing: 8
 
-            MaterialTextField {
-                id: newServiceField
+            Item {
                 Layout.fillWidth: true
-                placeholderText: Translation.tr("Service name (e.g. docker, sshd, tailscaled)")
-                onAccepted: addServiceButton.addService()
+                implicitHeight: newServiceField.implicitHeight
+
+                MaterialTextField {
+                    id: newServiceField
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    placeholderText: Translation.tr("Service name (e.g. docker, sshd, tailscaled)")
+                    onAccepted: {
+                        if (suggestionList.visible && suggestionList.currentIndex >= 0) {
+                            newServiceField.text = filteredModel[suggestionList.currentIndex];
+                            suggestionPopup.visible = false;
+                        } else {
+                            addServiceButton.addService();
+                        }
+                    }
+                    onTextChanged: {
+                        suggestionList.currentIndex = -1;
+                        suggestionPopup.visible = newServiceField.text.trim().length > 0 && filteredModel.length > 0;
+                    }
+
+                    property var filteredModel: {
+                        const query = newServiceField.text.trim().toLowerCase();
+                        if (query === "") return [];
+                        const existing = Config.options.systemd.services;
+                        const results = [];
+                        for (let i = 0; i < servicesPage.allSystemServices.length && results.length < 8; i++) {
+                            const name = servicesPage.allSystemServices[i];
+                            if (name.toLowerCase().indexOf(query) !== -1 && existing.indexOf(name) === -1) {
+                                results.push(name);
+                            }
+                        }
+                        return results;
+                    }
+
+                    Keys.onPressed: event => {
+                        if (!suggestionPopup.visible) return;
+                        if (event.key === Qt.Key_Down) {
+                            suggestionList.currentIndex = Math.min(suggestionList.currentIndex + 1, newServiceField.filteredModel.length - 1);
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Up) {
+                            suggestionList.currentIndex = Math.max(suggestionList.currentIndex - 1, -1);
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Escape) {
+                            suggestionPopup.visible = false;
+                            event.accepted = true;
+                        }
+                    }
+
+                    onActiveFocusChanged: {
+                        if (!activeFocus) {
+                            Qt.callLater(() => { suggestionPopup.visible = false; });
+                        }
+                    }
+                }
+
+                Popup {
+                    id: suggestionPopup
+                    visible: false
+                    y: newServiceField.height + 4
+                    width: newServiceField.width
+                    height: Math.min(suggestionList.contentHeight + 16, 300)
+                    padding: 4
+                    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+
+                    background: Item {
+                        StyledRectangularShadow {
+                            target: popupBg
+                        }
+                        Rectangle {
+                            id: popupBg
+                            anchors.fill: parent
+                            color: Appearance.m3colors.m3surfaceContainerHigh
+                            radius: Appearance.rounding.small
+                        }
+                    }
+
+                    contentItem: ListView {
+                        id: suggestionList
+                        clip: true
+                        implicitHeight: contentHeight
+                        model: newServiceField.filteredModel
+                        currentIndex: -1
+                        interactive: contentHeight > 280
+
+                        delegate: RippleButton {
+                            required property int index
+                            required property var modelData
+                            width: suggestionList.width
+                            implicitHeight: 36
+                            buttonRadius: Appearance.rounding.small
+                            colBackground: index === suggestionList.currentIndex ? Appearance.colors.colLayer2 : "transparent"
+
+                            onClicked: {
+                                newServiceField.text = modelData;
+                                suggestionPopup.visible = false;
+                                addServiceButton.addService();
+                            }
+
+                            contentItem: StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                leftPadding: 8
+                                text: modelData
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                color: Appearance.colors.colOnLayer1
+                            }
+                        }
+                    }
+                }
             }
 
             RippleButton {
@@ -86,6 +285,7 @@ ContentPage {
                     services.push(name);
                     Config.options.systemd.services = services;
                     newServiceField.text = "";
+                    suggestionPopup.visible = false;
                 }
 
                 onClicked: addService()
