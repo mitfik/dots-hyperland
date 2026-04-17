@@ -22,6 +22,14 @@ Scope { // Scope
             "icon": "experiment",
             "name": Translation.tr("Elements")
         },
+        {
+            "icon": "terminal",
+            "name": Translation.tr("Tmux")
+        },
+        {
+            "icon": "pets",
+            "name": Translation.tr("Kitty")
+        },
     ]
 
     Loader {
@@ -85,6 +93,13 @@ Scope { // Scope
                 Keys.onPressed: event => { // Esc to close
                     if (event.key === Qt.Key_Escape) {
                         cheatsheetRoot.hide();
+                    }
+                    if (event.key === Qt.Key_Left) {
+                        tabBar.setCurrentIndex((tabBar.currentIndex - 1 + root.tabButtonList.length) % root.tabButtonList.length);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Right) {
+                        tabBar.setCurrentIndex((tabBar.currentIndex + 1) % root.tabButtonList.length);
+                        event.accepted = true;
                     }
                     if (event.modifiers === Qt.ControlModifier) {
                         if (event.key === Qt.Key_PageDown) {
@@ -172,6 +187,8 @@ Scope { // Scope
 
                         CheatsheetKeybinds {}
                         CheatsheetPeriodicTable {}
+                        CheatsheetTmux {}
+                        CheatsheetKitty {}
                     }
                 }
             }
