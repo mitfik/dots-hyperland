@@ -47,7 +47,7 @@ Item {
                                     pixelSize: Appearance.font.pixelSize.title
                                     variableAxes: Appearance.font.variableAxes.title
                                 }
-                                color: Appearance.colors.colOnLayer0
+                                color: Appearance.m3colors.m3primary
                                 text: sectionItem.modelData.name
                             }
 
@@ -108,6 +108,7 @@ Item {
                                                     id: descText
                                                     anchors.centerIn: parent
                                                     font.pixelSize: Appearance.font.pixelSize.smaller
+                                                    color: Appearance.m3colors.m3onSurfaceVariant
                                                     text: modelData.desc
                                                 }
                                             }

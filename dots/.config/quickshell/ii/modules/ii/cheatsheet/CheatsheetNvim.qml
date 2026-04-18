@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 
-import "kitty_cheatsheet.js" as KittyData
+import "nvim_cheatsheet.js" as NvimData
 import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
@@ -8,7 +8,7 @@ import QtQuick.Layouts
 
 Item {
     id: root
-    readonly property var sections: KittyData.sections
+    readonly property var sections: NvimData.sections
     property real spacing: 20
     property real titleSpacing: 7
     property real padding: 4

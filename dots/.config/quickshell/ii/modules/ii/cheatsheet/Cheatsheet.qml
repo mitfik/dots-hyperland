@@ -30,6 +30,10 @@ Scope { // Scope
             "icon": "pets",
             "name": Translation.tr("Kitty")
         },
+        {
+            "icon": "edit_note",
+            "name": Translation.tr("Neovim")
+        },
     ]
 
     Loader {
@@ -54,8 +58,7 @@ Scope { // Scope
             implicitWidth: cheatsheetBackground.width + Appearance.sizes.elevationMargin * 2
             implicitHeight: cheatsheetBackground.height + Appearance.sizes.elevationMargin * 2
             WlrLayershell.namespace: "quickshell:cheatsheet"
-            // Hyprland 0.49: Focus is always exclusive and setting this breaks mouse focus grab
-            // WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
             color: "transparent"
 
             mask: Region {
@@ -90,6 +93,8 @@ Scope { // Scope
                 implicitWidth: cheatsheetColumnLayout.implicitWidth + padding * 2
                 implicitHeight: cheatsheetColumnLayout.implicitHeight + padding * 2
 
+                focus: cheatsheetRoot.visible
+
                 Keys.onPressed: event => { // Esc to close
                     if (event.key === Qt.Key_Escape) {
                         cheatsheetRoot.hide();
@@ -120,7 +125,6 @@ Scope { // Scope
 
                 RippleButton { // Close button
                     id: closeButton
-                    focus: cheatsheetRoot.visible
                     implicitWidth: 40
                     implicitHeight: 40
                     buttonRadius: Appearance.rounding.full
@@ -156,39 +160,85 @@ Scope { // Scope
                             tabButtonList: root.tabButtonList
 
                             Synchronizer on currentIndex {
-                                property alias source: swipeView.currentIndex
+                                property alias source: contentContainer.currentIndex
                             }
                         }
                     }
 
-                    SwipeView { // Content pages
-                        id: swipeView
+                    Item { // Content pages
+                        id: contentContainer
                         Layout.topMargin: 5
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        spacing: 10
-                        currentIndex: Persistent.states.cheatsheet.tabIndex
-                        onCurrentIndexChanged: {
-                            Persistent.states.cheatsheet.tabIndex = currentIndex;
-                        }
 
-                        implicitWidth: Math.max.apply(null, contentChildren.map(child => child.implicitWidth || 0))
-                        implicitHeight: Math.max.apply(null, contentChildren.map(child => child.implicitHeight || 0))
+                        property int currentIndex: Persistent.states.cheatsheet.tabIndex
+                        property int _previousIndex: -1
+                        property int _direction: 0 // -1 = left, 1 = right
+                        property var _components: [
+                            compKeybinds, compElements, compTmux, compKitty, compNvim
+                        ]
+
+                        Component { id: compKeybinds; CheatsheetKeybinds {} }
+                        Component { id: compElements; CheatsheetPeriodicTable {} }
+                        Component { id: compTmux; CheatsheetTmux {} }
+                        Component { id: compKitty; CheatsheetKitty {} }
+                        Component { id: compNvim; CheatsheetNvim {} }
+
+                        // Fixed size based on window so all tabs share the same dimensions
+                        implicitWidth: cheatsheetRoot.width * 0.45
+                        implicitHeight: cheatsheetRoot.height * 0.5
+
+                        onCurrentIndexChanged: {
+                            if (_previousIndex >= 0 && _previousIndex !== currentIndex) {
+                                _direction = currentIndex > _previousIndex ? 1 : -1;
+                            }
+                            Persistent.states.cheatsheet.tabIndex = currentIndex;
+                            _previousIndex = currentIndex;
+                        }
 
                         clip: true
                         layer.enabled: true
                         layer.effect: OpacityMask {
                             maskSource: Rectangle {
-                                width: swipeView.width
-                                height: swipeView.height
+                                width: contentContainer.width
+                                height: contentContainer.height
                                 radius: Appearance.rounding.small
                             }
                         }
 
-                        CheatsheetKeybinds {}
-                        CheatsheetPeriodicTable {}
-                        CheatsheetTmux {}
-                        CheatsheetKitty {}
+                        Loader {
+                            id: currentPage
+                            anchors.centerIn: parent
+                            sourceComponent: contentContainer._components[contentContainer.currentIndex]
+                            opacity: 1
+                            property real slideX: 0
+                            transform: Translate { x: currentPage.slideX }
+
+                            onSourceComponentChanged: {
+                                // Slide in from the direction of navigation
+                                slideX = contentContainer._direction * contentContainer.width * 0.3;
+                                opacity = 0;
+                                slideInAnim.restart();
+                            }
+
+                            ParallelAnimation {
+                                id: slideInAnim
+                                NumberAnimation {
+                                    target: currentPage
+                                    property: "slideX"
+                                    to: 0
+                                    duration: Appearance.animation.elementMoveFast.duration
+                                    easing.type: Appearance.animation.elementMoveFast.type
+                                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                                }
+                                NumberAnimation {
+                                    target: currentPage
+                                    property: "opacity"
+                                    to: 1
+                                    duration: Appearance.animation.elementMoveFast.duration
+                                    easing.type: Appearance.animation.elementMoveFast.type
+                                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                                }
+                            }
+                        }
                     }
                 }
             }
