@@ -21,7 +21,6 @@ ContentPage {
             const parts = lines[i].trim().split(/\s+/);
             if (parts.length >= 1 && parts[0].endsWith(".service")) {
                 const name = parts[0].replace(/\.service$/, "");
-                // Skip bare templates like "syncthing@" — only keep concrete names
                 if (!name.endsWith("@")) {
                     names.push(name);
                 }
@@ -35,19 +34,26 @@ ContentPage {
         _pendingCount--;
         if (_pendingCount > 0) return;
 
+        const userKeys = new Set(["userFiles", "userUnits"]);
         const seen = new Set();
         const merged = [];
         const keys = Object.keys(_collected);
         for (let k = 0; k < keys.length; k++) {
+            const isUser = userKeys.has(keys[k]);
             const arr = _collected[keys[k]];
             for (let i = 0; i < arr.length; i++) {
-                if (!seen.has(arr[i])) {
-                    seen.add(arr[i]);
-                    merged.push(arr[i]);
+                const dedupeKey = arr[i] + (isUser ? ":user" : ":system");
+                if (!seen.has(dedupeKey)) {
+                    seen.add(dedupeKey);
+                    merged.push({
+                        name: arr[i],
+                        user: isUser,
+                        display: isUser ? `${arr[i]} @${SystemInfo.username}` : arr[i]
+                    });
                 }
             }
         }
-        merged.sort();
+        merged.sort((a, b) => a.display.localeCompare(b.display));
         allSystemServices = merged;
     }
 
@@ -132,7 +138,10 @@ ContentPage {
 
                     StyledText {
                         Layout.fillWidth: true
-                        text: modelData
+                        text: {
+                            const state = Systemd.getState(modelData);
+                            return state.user ? `${modelData} @${SystemInfo.username}` : modelData;
+                        }
                         font.pixelSize: Appearance.font.pixelSize.small
                         color: Appearance.colors.colOnLayer2
                     }
@@ -171,7 +180,7 @@ ContentPage {
                     placeholderText: Translation.tr("Service name (e.g. docker, sshd, tailscaled)")
                     onAccepted: {
                         if (suggestionList.visible && suggestionList.currentIndex >= 0) {
-                            newServiceField.text = filteredModel[suggestionList.currentIndex];
+                            newServiceField.text = filteredModel[suggestionList.currentIndex].name;
                             suggestionPopup.visible = false;
                         } else {
                             addServiceButton.addService();
@@ -188,9 +197,9 @@ ContentPage {
                         const existing = Config.options.systemd.services;
                         const results = [];
                         for (let i = 0; i < servicesPage.allSystemServices.length && results.length < 8; i++) {
-                            const name = servicesPage.allSystemServices[i];
-                            if (name.toLowerCase().indexOf(query) !== -1 && existing.indexOf(name) === -1) {
-                                results.push(name);
+                            const svc = servicesPage.allSystemServices[i];
+                            if (svc.name.toLowerCase().indexOf(query) !== -1 && existing.indexOf(svc.name) === -1) {
+                                results.push(svc);
                             }
                         }
                         return results;
@@ -255,7 +264,7 @@ ContentPage {
                             colBackground: index === suggestionList.currentIndex ? Appearance.colors.colLayer2 : "transparent"
 
                             onClicked: {
-                                newServiceField.text = modelData;
+                                newServiceField.text = modelData.name;
                                 suggestionPopup.visible = false;
                                 addServiceButton.addService();
                             }
@@ -263,7 +272,7 @@ ContentPage {
                             contentItem: StyledText {
                                 anchors.verticalCenter: parent.verticalCenter
                                 leftPadding: 8
-                                text: modelData
+                                text: modelData.display
                                 font.pixelSize: Appearance.font.pixelSize.small
                                 color: Appearance.colors.colOnLayer1
                             }
@@ -278,7 +287,9 @@ ContentPage {
                 implicitHeight: 36
 
                 function addService() {
-                    const name = newServiceField.text.trim();
+                    let name = newServiceField.text.trim();
+                    const atIdx = name.indexOf(" @");
+                    if (atIdx !== -1) name = name.substring(0, atIdx);
                     if (name === "") return;
                     let services = [...Config.options.systemd.services];
                     if (services.indexOf(name) !== -1) return;

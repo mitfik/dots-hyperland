@@ -3,12 +3,17 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.services
 import qs.modules.common.functions
 
 ColumnLayout {
     id: root
     spacing: 4
     visible: Config.options.systemd.services.length > 0
+
+    function serviceDisplayName(name, isUser) {
+        return isUser ? `${name} @${SystemInfo.username}` : name;
+    }
 
     property bool collapsed: Persistent.states.sidebar.services.collapsed
 
@@ -95,7 +100,7 @@ ColumnLayout {
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: serviceButton.modelData
+                            text: root.serviceDisplayName(serviceButton.modelData, serviceButton.state.user)
                             font.pixelSize: Appearance.font.pixelSize.small
                             color: Appearance.colors.colOnLayer2
                             elide: Text.ElideRight
