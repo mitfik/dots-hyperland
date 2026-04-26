@@ -52,12 +52,6 @@ Scope {
         regionSelectorLoader.item.videoAction = WRegionSelectionPanel.VideoAction.RecordWithSound;
     }
 
-    function search() {
-        GlobalStates.regionSelectorOpen = true;
-        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Image;
-        regionSelectorLoader.item.imageAction = WRegionSelectionPanel.ImageAction.Search;
-    }
-
     IpcHandler {
         target: "region"
 
@@ -73,20 +67,12 @@ Scope {
         function recordWithSound() {
             root.recordWithSound();
         }
-        function search() {
-            root.search();
-        }
     }
 
     GlobalShortcut {
         name: "regionScreenshot"
         description: "Takes a screenshot of the selected region"
         onPressed: root.screenshot()
-    }
-    GlobalShortcut {
-        name: "regionSearch"
-        description: "Searches the selected region"
-        onPressed: root.search()
     }
     GlobalShortcut {
         name: "regionOcr"
