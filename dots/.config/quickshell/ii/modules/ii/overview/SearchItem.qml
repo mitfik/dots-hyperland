@@ -191,6 +191,14 @@ RippleButton {
                 visible: root.itemType && root.itemType != Translation.tr("App")
                 text: root.itemType
             }
+            StyledText {
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                color: root.selected ? Appearance.colors.colOnPrimaryContainer : Appearance.m3colors.m3outline
+                visible: root.itemType === Translation.tr("App") && (root.entry?.command?.length ?? 0) > 0
+                text: root.entry?.command?.[0] ?? ""
+                elide: Text.ElideMiddle
+                Layout.fillWidth: true
+            }
             RowLayout {
                 Loader { // Checkmark for copied clipboard entry
                     visible: itemName == Quickshell.clipboardText && root.cliphistRawString

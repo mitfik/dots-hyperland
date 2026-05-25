@@ -242,7 +242,7 @@ Singleton {
         const appResultObjects = AppSearch.fuzzyQuery(StringUtils.cleanPrefix(root.query, Config.options.search.prefix.app)).map(entry => {
             return resultComp.createObject(null, {
                 type: Translation.tr("App"),
-                id: entry.id,
+                entryId: entry.id,
                 name: entry.name,
                 iconName: entry.icon,
                 iconType: LauncherSearchResult.IconType.System,
@@ -259,6 +259,7 @@ Singleton {
                 runInTerminal: entry.runInTerminal,
                 genericName: entry.genericName,
                 keywords: entry.keywords,
+                command: entry.command,
                 actions: entry.actions.map(action => {
                     return resultComp.createObject(null, {
                         name: action.name,
