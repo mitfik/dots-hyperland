@@ -38,17 +38,21 @@ Singleton {
         const monitor = monitors.find(m => focusedName === m.screen.name);
         if (monitor)
             monitor.setBrightness(monitor.brightness + 0.05);
+        // Always notify so OSD pops up even when value clamps at max
+        root.brightnessChanged();
     }
 
     function decreaseBrightness(): void {
         const focusedName = Hyprland.focusedMonitor.name;
         const monitor = monitors.find(m => focusedName === m.screen.name);
-        if (monitor && monitor.brightness > 0) 
+        if (monitor && monitor.brightness > 0)
             monitor.setBrightness(monitor.brightness - 0.05);
         // if brightness is 0, then decrease gamma
         else {
             Hyprsunset.setGamma(Hyprsunset.gamma - 5);
         }
+        // Always notify so OSD pops up even when value clamps at min
+        root.brightnessChanged();
     }
 
     reloadableId: "brightness"
@@ -248,12 +252,12 @@ Singleton {
     IpcHandler {
         target: "brightness"
 
-        function increment() {
-            onPressed: root.increaseBrightness()
+        function increment(): void {
+            root.increaseBrightness();
         }
 
-        function decrement() {
-            onPressed: root.decreaseBrightness()
+        function decrement(): void {
+            root.decreaseBrightness();
         }
     }
 
