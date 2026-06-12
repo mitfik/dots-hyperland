@@ -44,7 +44,7 @@ Item {
                     fill: 1
                     text: iconName
                     iconSize: Appearance.font.pixelSize.normal
-                    color: Appearance.m3colors.m3onSecondaryContainer
+                    color: root.warning ? Appearance.colors.colError : Appearance.m3colors.m3onSecondaryContainer
                 }
             }
         }
@@ -63,7 +63,8 @@ Item {
             StyledText {
                 id: percentageText
                 anchors.centerIn: parent
-                color: Appearance.colors.colOnLayer1
+                color: root.warning ? Appearance.colors.colError : Appearance.colors.colOnLayer1
+                font.weight: root.warning ? Font.DemiBold : Font.Normal
                 font.pixelSize: Appearance.font.pixelSize.small
                 text: `${Math.round(percentage * 100).toString()}`
             }

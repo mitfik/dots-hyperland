@@ -37,6 +37,13 @@ MouseArea {
             warningThreshold: Config.options.bar.resources.cpuWarningThreshold
         }
 
+        Resource {
+            Layout.alignment: Qt.AlignHCenter
+            iconName: "hard_drive"
+            percentage: ResourceUsage.diskUsedPercentage
+            warningThreshold: Config.options.bar.resources.diskWarningThreshold
+        }
+
     }
 
     Bar.ResourcesPopup {

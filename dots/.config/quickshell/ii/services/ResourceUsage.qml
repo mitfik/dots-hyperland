@@ -21,15 +21,23 @@ Singleton {
     property real swapUsedPercentage: swapTotal > 0 ? (swapUsed / swapTotal) : 0
     property real cpuUsage: 0
     property var previousCpuStats
+    // Disk usage for the root filesystem ("/"), in KB. Percentage matches `df`
+    // (used / (used + available)), so reserved blocks are excluded from the total.
+    property real diskUsed: 0
+    property real diskFree: 0
+    property real diskTotal: diskUsed + diskFree
+    property real diskUsedPercentage: (diskUsed + diskFree) > 0 ? (diskUsed / (diskUsed + diskFree)) : 0
 
     property string maxAvailableMemoryString: kbToGbString(ResourceUsage.memoryTotal)
     property string maxAvailableSwapString: kbToGbString(ResourceUsage.swapTotal)
     property string maxAvailableCpuString: "--"
+    property string maxAvailableDiskString: kbToGbString(ResourceUsage.diskTotal)
 
     readonly property int historyLength: Config?.options.resources.historyLength ?? 60
     property list<real> cpuUsageHistory: []
     property list<real> memoryUsageHistory: []
     property list<real> swapUsageHistory: []
+    property list<real> diskUsageHistory: []
 
     function kbToGbString(kb) {
         return (kb / (1024 * 1024)).toFixed(1) + " GB";
@@ -53,10 +61,17 @@ Singleton {
             cpuUsageHistory.shift()
         }
     }
+    function updateDiskUsageHistory() {
+        diskUsageHistory = [...diskUsageHistory, diskUsedPercentage]
+        if (diskUsageHistory.length > historyLength) {
+            diskUsageHistory.shift()
+        }
+    }
     function updateHistories() {
         updateMemoryUsageHistory()
         updateSwapUsageHistory()
         updateCpuUsageHistory()
+        updateDiskUsageHistory()
     }
 
 	Timer {
@@ -92,6 +107,9 @@ Singleton {
                 previousCpuStats = { total, idle }
             }
 
+            // Disk usage is read via `df` instead of /proc, so poll it here
+            diskProc.running = true
+
             root.updateHistories()
             interval = Config.options?.resources?.updateInterval ?? 3000
         }
@@ -99,6 +117,25 @@ Singleton {
 
 	FileView { id: fileMeminfo; path: "/proc/meminfo" }
     FileView { id: fileStat; path: "/proc/stat" }
+
+    Process {
+        id: diskProc
+        environment: ({
+            LANG: "C",
+            LC_ALL: "C"
+        })
+        command: ["bash", "-c", "df -k --output=used,avail / | tail -1"]
+        stdout: StdioCollector {
+            id: diskCollector
+            onStreamFinished: {
+                const parts = diskCollector.text.trim().split(/\s+/).map(Number)
+                if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    root.diskUsed = parts[0]
+                    root.diskFree = parts[1]
+                }
+            }
+        }
+    }
 
     Process {
         id: findCpuMaxFreqProc
