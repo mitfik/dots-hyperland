@@ -401,6 +401,8 @@ Singleton {
 
             property JsonObject notifications: JsonObject {
                 property int timeout: 7000
+                property int maxCount: 100 // Saved notifications to keep; 0 = unlimited
+                property int maxAgeDays: 7 // Discard saved notifications older than this; 0 = keep forever
             }
 
             property JsonObject osd: JsonObject {

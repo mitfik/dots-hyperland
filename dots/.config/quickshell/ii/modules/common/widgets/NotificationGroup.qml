@@ -64,11 +64,7 @@ MouseArea { // Notification group area
             easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
         }
         onFinished: () => {
-            root.notifications.forEach((notif) => {
-                Qt.callLater(() => {
-                    Notifications.discardNotification(notif.notificationId);
-                });
-            });
+            Notifications.discardNotifications(root.notifications.map((notif) => notif.notificationId));
         }
     }
 

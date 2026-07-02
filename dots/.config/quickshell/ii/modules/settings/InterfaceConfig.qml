@@ -265,6 +265,28 @@ ContentPage {
                 Config.options.notifications.timeout = value;
             }
         }
+        ConfigSpinBox {
+            icon: "stacks"
+            text: Translation.tr("Max saved notifications (0 = unlimited)")
+            value: Config.options.notifications.maxCount
+            from: 0
+            to: 1000
+            stepSize: 10
+            onValueChanged: {
+                Config.options.notifications.maxCount = value;
+            }
+        }
+        ConfigSpinBox {
+            icon: "history"
+            text: Translation.tr("Discard saved notifications after (days, 0 = never)")
+            value: Config.options.notifications.maxAgeDays
+            from: 0
+            to: 365
+            stepSize: 1
+            onValueChanged: {
+                Config.options.notifications.maxAgeDays = value;
+            }
+        }
     }
 
     ContentSection {

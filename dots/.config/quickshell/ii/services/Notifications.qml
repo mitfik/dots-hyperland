@@ -90,9 +90,39 @@ Singleton {
     }
 
     function stringifyList(list) {
-        return JSON.stringify(list.map((notif) => notifToJSON(notif)), null, 2);
+        return JSON.stringify(list.map((notif) => notifToJSON(notif)));
     }
-    
+
+    // Writing the file on every single change is expensive with a long list,
+    // so changes are collected and written once they settle
+    Timer {
+        id: saveTimer
+        interval: 500
+        repeat: false
+        onTriggered: notifFileView.setText(stringifyList(root.list))
+    }
+
+    function saveNotifications() {
+        saveTimer.restart();
+    }
+
+    // Retention policy: drop notifications that are too old, then cap the count.
+    // Expects oldest-first order (the order notifications are appended in).
+    // Works on both Notif objects and their JSON representations.
+    function prunedNotifications(values) {
+        const maxCount = Config?.options.notifications.maxCount ?? 100;
+        const maxAgeDays = Config?.options.notifications.maxAgeDays ?? 7;
+        let result = values;
+        if (maxAgeDays > 0) {
+            const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
+            result = result.filter((notif) => notif.time >= cutoff);
+        }
+        if (maxCount > 0 && result.length > maxCount) {
+            result = result.slice(result.length - maxCount);
+        }
+        return result;
+    }
+
     onListChanged: {
         // Update latest time for each app
         root.list.forEach((notif) => {
@@ -166,7 +196,7 @@ Singleton {
                 "notification": notification,
                 "time": Date.now(),
             });
-			root.list = [...root.list, newNotifObject];
+			root.list = root.prunedNotifications([...root.list, newNotifObject]);
 
             // Popup
             if (!root.popupInhibited) {
@@ -181,7 +211,7 @@ Singleton {
             }
             root.notify(newNotifObject);
             // console.log(notifToString(newNotifObject));
-            notifFileView.setText(stringifyList(root.list));
+            root.saveNotifications();
         }
     }
 
@@ -190,24 +220,26 @@ Singleton {
     }
 
     function discardNotification(id) {
-        console.log("[Notifications] Discarding notification with ID: " + id);
-        const index = root.list.findIndex((notif) => notif.notificationId === id);
-        const notifServerIndex = notifServer.trackedNotifications.values.findIndex((notif) => notif.id + root.idOffset === id);
-        if (index !== -1) {
-            root.list.splice(index, 1);
-            notifFileView.setText(stringifyList(root.list));
-            triggerListChange()
+        discardNotifications([id]);
+    }
+
+    function discardNotifications(ids) {
+        const idSet = new Set(ids);
+        const remaining = root.list.filter((notif) => !idSet.has(notif.notificationId));
+        // Update the list before dismissing on the server: dismiss() nulls the
+        // wrapper's notification, which re-enters discardNotification as a no-op
+        if (remaining.length !== root.list.length) {
+            root.list = remaining;
+            saveNotifications();
         }
-        if (notifServerIndex !== -1) {
-            notifServer.trackedNotifications.values[notifServerIndex].dismiss()
-        }
-        root.discard(id); // Emit signal
+        const trackedToDismiss = notifServer.trackedNotifications.values.filter((notif) => idSet.has(notif.id + root.idOffset));
+        trackedToDismiss.forEach((notif) => notif.dismiss());
+        ids.forEach((id) => root.discard(id)); // Emit signal
     }
 
     function discardAllNotifications() {
         root.list = []
-        triggerListChange()
-        notifFileView.setText(stringifyList(root.list));
+        saveNotifications();
         notifServer.trackedNotifications.values.forEach((notif) => {
             notif.dismiss()
         })
@@ -269,7 +301,9 @@ Singleton {
         path: Qt.resolvedUrl(filePath)
         onLoaded: {
             const fileContents = notifFileView.text()
-            root.list = JSON.parse(fileContents).map((notif) => {
+            const savedNotifications = JSON.parse(fileContents)
+            const keptNotifications = root.prunedNotifications(savedNotifications)
+            root.list = keptNotifications.map((notif) => {
                 return notifComponent.createObject(root, {
                     "notificationId": notif.notificationId,
                     "actions": [], // Notification actions are meaningless if they're not tracked by the server or the sender is dead
@@ -287,6 +321,11 @@ Singleton {
             root.list.forEach((notif) => {
                 maxId = Math.max(maxId, notif.notificationId)
             })
+
+            if (keptNotifications.length !== savedNotifications.length) {
+                console.log("[Notifications] Pruned " + (savedNotifications.length - keptNotifications.length) + " old saved notifications")
+                root.saveNotifications()
+            }
 
             console.log("[Notifications] File loaded")
             root.idOffset = maxId
