@@ -21,10 +21,50 @@ MouseArea {
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     implicitWidth: 20
     implicitHeight: 20
+
+    // Left click should always bring up the app. Many apps map the SNI Activate
+    // action to a show/hide toggle, so a click on a tray-minimized app can end up
+    // hiding it again. If the app's tray menu exposes a "Show"/"Restore"/"Open"
+    // entry (only present while the window is hidden), trigger that instead so a
+    // left click reliably reveals the window; otherwise fall back to activate().
+    function showApp() {
+        const showEntry = root.findShowEntry();
+        if (showEntry) {
+            showEntry.triggered();
+        } else {
+            item.activate();
+        }
+    }
+    function findShowEntry() {
+        if (!item.hasMenu)
+            return null;
+        const entries = activateMenuOpener.children?.values ?? [];
+        for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i];
+            if (!entry || entry.isSeparator || entry.hasChildren)
+                continue;
+            const text = (entry.text ?? "").toLowerCase();
+            if (text.length === 0)
+                continue;
+            if (text.includes("hide") || text.includes("minimize") || text.includes("minimise"))
+                continue;
+            if (text.includes("show") || text.includes("restore") || text.includes("open"))
+                return entry;
+        }
+        return null;
+    }
+
+    // Keeps the tray item's menu entries loaded so findShowEntry() can inspect
+    // them on the first left click without waiting for a DBus round-trip.
+    QsMenuOpener {
+        id: activateMenuOpener
+        menu: root.item.hasMenu ? root.item.menu : null
+    }
+
     onPressed: (event) => {
         switch (event.button) {
         case Qt.LeftButton:
-            item.activate();
+            root.showApp();
             break;
         case Qt.RightButton:
             if (item.hasMenu)
