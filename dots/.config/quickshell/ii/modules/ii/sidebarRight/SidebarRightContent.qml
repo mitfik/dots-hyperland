@@ -160,6 +160,7 @@ Item {
             if (!shown) return;
             Network.enableWifi();
             Network.rescanWifi();
+            MobileData.update();
         }
     }
 

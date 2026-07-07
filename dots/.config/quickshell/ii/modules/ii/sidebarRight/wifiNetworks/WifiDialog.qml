@@ -3,6 +3,7 @@ import qs.services
 import qs.services.network
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.ii.sidebarRight.mobileData
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -12,8 +13,19 @@ WindowDialog {
     backgroundHeight: 600
 
     WindowDialogTitle {
-        text: Translation.tr("Connect to Wi-Fi")
+        text: MobileData.available ? Translation.tr("Internet") : Translation.tr("Connect to Wi-Fi")
     }
+
+    MobileBroadbandSection {
+        Layout.fillWidth: true
+        visible: MobileData.available
+    }
+
+    WindowDialogSectionHeader {
+        visible: MobileData.available
+        text: Translation.tr("Wi-Fi")
+    }
+
     WindowDialogSeparator {
         visible: !Network.wifiScanning
     }
