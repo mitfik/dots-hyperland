@@ -17,6 +17,7 @@ Singleton {
     // the UI hides the whole mobile broadband section, so machines without a
     // modem see no change.
     property bool available: false
+    property bool enabled: false // WWAN radio enabled (nmcli radio wwan)
     property bool connected: false
     property bool connecting: connectProc.running || disconnectProc.running || root.deviceConnecting
 
@@ -39,6 +40,8 @@ Singleton {
     readonly property string statusText: {
         if (!available)
             return "";
+        if (!enabled)
+            return qsTr("Off");
         if (connecting)
             return qsTr("Connecting…");
         if (!connected)
@@ -54,8 +57,10 @@ Singleton {
     }
 
     readonly property string materialSymbol: {
-        if (!connected)
+        if (!enabled)
             return "signal_cellular_off";
+        if (!connected)
+            return "signal_cellular_alt"; // radio on, searching / not connected
         return signalQuality > 80 ? "signal_cellular_4_bar" :
             signalQuality > 60 ? "signal_cellular_3_bar" :
             signalQuality > 40 ? "signal_cellular_2_bar" :
@@ -78,6 +83,14 @@ Singleton {
     }
 
     // Control
+    function setEnabled(on): void {
+        toggleProc.exec(["nmcli", "radio", "wwan", on ? "on" : "off"]);
+    }
+
+    function toggle(): void {
+        setEnabled(!enabled);
+    }
+
     function connectProfile(uuid): void {
         if (!uuid || uuid.length === 0)
             return;
@@ -122,6 +135,12 @@ Singleton {
         onExited: root.update()
     }
 
+    Process {
+        id: toggleProc
+        environment: ({ LANG: "C", LC_ALL: "C" })
+        onExited: root.update()
+    }
+
     // React to any NetworkManager change; coalesce bursts with a short timer.
     Process {
         id: subscriber
@@ -153,6 +172,7 @@ Singleton {
         running: true
         environment: ({ LANG: "C", LC_ALL: "C" })
         command: ["bash", "-c",
+            'echo "WWAN:$(nmcli radio wwan 2>/dev/null)"; ' +
             'nmcli -t -f TYPE,STATE,DEVICE device 2>/dev/null | grep "^gsm:" | sed "s/^gsm:/DEV:/"; ' +
             'nmcli -t -f UUID,TYPE,ACTIVE,NAME connection show 2>/dev/null | grep ":gsm:" | sed "s/^/CONN:/"']
         stdout: StdioCollector {
@@ -160,12 +180,15 @@ Singleton {
                 let hasDevice = false;
                 let deviceState = "";
                 let deviceName = "";
+                let radioEnabled = false;
                 const parsed = [];
 
                 for (const rawLine of text.trim().split("\n")) {
                     if (rawLine.length === 0)
                         continue;
-                    if (rawLine.startsWith("DEV:")) {
+                    if (rawLine.startsWith("WWAN:")) {
+                        radioEnabled = rawLine.slice(5).trim() === "enabled";
+                    } else if (rawLine.startsWith("DEV:")) {
                         hasDevice = true;
                         const parts = rawLine.slice(4).split(":");
                         deviceState = parts[0] ?? "";
@@ -181,6 +204,7 @@ Singleton {
                 }
 
                 root.available = hasDevice || parsed.length > 0;
+                root.enabled = radioEnabled;
                 root.device = deviceName;
                 root.deviceConnecting = deviceState.includes("connecting");
                 root.connected = deviceState === "connected";

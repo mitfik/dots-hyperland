@@ -25,6 +25,11 @@ AbstractQuickPanel {
                 root.openWifiDialog();
             }
         }
+        MobileDataToggle {
+            altAction: () => {
+                root.openWifiDialog();
+            }
+        }
         BluetoothToggle {
             altAction: () => {
                 root.openBluetoothDialog();
