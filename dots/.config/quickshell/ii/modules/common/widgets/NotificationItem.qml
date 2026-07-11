@@ -18,6 +18,15 @@ Item { // Notification item area
     property real padding: onlyNotification ? 0 : 8
     property real summaryElideRatio: 0.85
 
+    // The freedesktop "default" action is invoked by clicking the notification
+    // body (not shown as a button). It exists only if the sending app supplies it.
+    readonly property var visibleActions: (notificationObject?.actions ?? []).filter(a => a.identifier !== "default")
+    readonly property bool hasDefaultAction: (notificationObject?.actions ?? []).some(a => a.identifier === "default")
+    function invokeDefaultAction() {
+        if (root.hasDefaultAction)
+            Notifications.attemptInvokeAction(notificationObject.notificationId, "default");
+    }
+
     property real dragConfirmThreshold: 70 // Drag further to discard notification
     property real dismissOvershoot: notificationIcon.implicitWidth + 20 // Account for gaps and bouncy animations
     property var qmlParent: root?.parent?.parent // There's something between this and the parent ListView
@@ -69,6 +78,7 @@ Item { // Notification item area
         interactive: expanded
         automaticallyReset: false
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+        cursorShape: root.hasDefaultAction ? Qt.PointingHandCursor : Qt.ArrowCursor
 
         onClicked: (mouse) => {
             if (mouse.button === Qt.MiddleButton) {
@@ -87,10 +97,14 @@ Item { // Notification item area
         }
 
         onDragReleased: (diffX, diffY) => {
-            if (Math.abs(diffX) > root.dragConfirmThreshold)
+            if (Math.abs(diffX) > root.dragConfirmThreshold) {
                 root.destroyWithAnimation(diffX < 0);
-            else 
-                dragManager.resetDrag();
+                return;
+            }
+            // A near-stationary release is a click: invoke the default action.
+            if (Math.abs(diffX) < 8 && Math.abs(diffY) < 8)
+                root.invokeDefaultAction();
+            dragManager.resetDrag();
         }
     }
 
@@ -252,7 +266,7 @@ Item { // Notification item area
                                 Layout.fillWidth: true
                                 buttonText: Translation.tr("Close")
                                 urgency: notificationObject.urgency
-                                implicitWidth: (notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) : 
+                                implicitWidth: (root.visibleActions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
                                     (contentItem.implicitWidth + leftPadding + rightPadding)
 
                                 onClicked: {
@@ -270,7 +284,7 @@ Item { // Notification item area
 
                             Repeater {
                                 id: actionRepeater
-                                model: notificationObject.actions
+                                model: root.visibleActions
                                 NotificationActionButton {
                                     id: notifAction
                                     required property var modelData
@@ -286,7 +300,7 @@ Item { // Notification item area
                             NotificationActionButton {
                                 Layout.fillWidth: true
                                 urgency: notificationObject.urgency
-                                implicitWidth: (notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) : 
+                                implicitWidth: (root.visibleActions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
                                     (contentItem.implicitWidth + leftPadding + rightPadding)
 
                                 onClicked: {

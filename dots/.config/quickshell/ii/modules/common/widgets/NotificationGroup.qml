@@ -39,6 +39,22 @@ MouseArea { // Notification group area
         destroyAnimation.running = true;
     }
 
+    // Newest notification in the group that carries a freedesktop "default"
+    // action, invoked when the (collapsed) group body is clicked.
+    function defaultActionNotif() {
+        for (let i = root.notifications.length - 1; i >= 0; i--) {
+            const n = root.notifications[i];
+            if ((n?.actions ?? []).some(a => a.identifier === "default"))
+                return n;
+        }
+        return null;
+    }
+    readonly property bool hasDefaultAction: defaultActionNotif() !== null
+    function invokeDefaultAction() {
+        const n = defaultActionNotif();
+        if (n) Notifications.attemptInvokeAction(n.notificationId, "default");
+    }
+
     hoverEnabled: true
     onContainsMouseChanged: {
         if (!root.popup) return;
@@ -80,14 +96,15 @@ MouseArea { // Notification group area
         interactive: !expanded
         automaticallyReset: false
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+        cursorShape: (!root.expanded && root.hasDefaultAction) ? Qt.PointingHandCursor : Qt.ArrowCursor
 
-        onPressed: {
-            if (mouse.button === Qt.RightButton) 
+        onPressed: (mouse) => {
+            if (mouse.button === Qt.RightButton)
                 root.toggleExpanded();
         }
 
         onClicked: (mouse) => {
-            if (mouse.button === Qt.MiddleButton) 
+            if (mouse.button === Qt.MiddleButton)
                 root.destroyWithAnimation();
         }
 
@@ -102,10 +119,15 @@ MouseArea { // Notification group area
         }
 
         onDragReleased: (diffX, diffY) => {
-            if (Math.abs(diffX) > root.dragConfirmThreshold)
+            if (Math.abs(diffX) > root.dragConfirmThreshold) {
                 root.destroyWithAnimation(diffX < 0);
-            else 
-                dragManager.resetDrag();
+                return;
+            }
+            // A near-stationary release on the collapsed group is a click:
+            // invoke the default action (jumps to the app) if there is one.
+            if (Math.abs(diffX) < 8 && Math.abs(diffY) < 8)
+                root.invokeDefaultAction();
+            dragManager.resetDrag();
         }
     }
 
