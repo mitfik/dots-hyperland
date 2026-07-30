@@ -71,14 +71,21 @@ Item {
         property string wsName: ""
         property int wsWindows: 0
         property bool isActive: false
+        property bool hasWindows: wsWindows > 0
         property string shortName: wsName.replace("special:", "")
         property string icon: CF.SpecialWorkspaceUtils.getIcon(wsName)
         property bool isIconText: icon.length === 1
+        // Dim the empty ones instead of showing a window count
+        property color colContent: isActive ? Appearance.m3colors.m3onPrimary : hasWindows ? Appearance.m3colors.m3onSurface : ColorUtils.transparentize(Appearance.m3colors.m3onSurface, 0.55)
 
         implicitWidth: 26
         implicitHeight: 26
         radius: Appearance.rounding.full
-        color: isActive ? Appearance.colors.colPrimary : (wsButtonArea.containsMouse ? Appearance.colors.colLayer1Hover : "transparent")
+        color: isActive ? Appearance.colors.colPrimary : (wsButtonArea.containsMouse ? Appearance.colors.colLayer1Hover : hasWindows ? ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 0.5) : "transparent")
+
+        Behavior on colContent {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
 
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
@@ -95,7 +102,7 @@ Item {
                 text: wsButton.icon
                 fill: wsButton.isActive ? 1 : 0
                 iconSize: 18
-                color: wsButton.isActive ? Appearance.m3colors.m3onPrimary : Appearance.m3colors.m3onSurface
+                color: wsButton.colContent
             }
         }
 
@@ -107,27 +114,7 @@ Item {
                 font.weight: 600
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
-                color: wsButton.isActive ? Appearance.m3colors.m3onPrimary : Appearance.m3colors.m3onSurface
-            }
-        }
-
-        // Badge for window count
-        Rectangle {
-            visible: wsButton.wsWindows > 1 && !wsButton.isActive
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.rightMargin: -2
-            anchors.topMargin: -2
-            width: 12
-            height: 12
-            radius: 6
-            color: Appearance.m3colors.m3tertiary
-
-            StyledText {
-                anchors.centerIn: parent
-                text: wsButton.wsWindows
-                font.pixelSize: 8
-                color: Appearance.m3colors.m3onTertiary
+                color: wsButton.colContent
             }
         }
 

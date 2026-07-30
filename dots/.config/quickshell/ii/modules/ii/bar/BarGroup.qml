@@ -35,7 +35,7 @@ Item {
             bottom: root.vertical ? parent.bottom : undefined
             margins: root.padding
         }
-        columnSpacing: 4
+        columnSpacing: 8
         rowSpacing: 12
     }
 }

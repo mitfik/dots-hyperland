@@ -14,7 +14,7 @@ Item {
     RowLayout {
         id: rowLayout
         anchors.centerIn: parent
-        spacing: 4
+        spacing: 7
 
         StyledText {
             font.pixelSize: Appearance.font.pixelSize.large

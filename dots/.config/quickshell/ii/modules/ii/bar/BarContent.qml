@@ -106,7 +106,7 @@ Item { // Bar content region
             bottom: parent.bottom
             horizontalCenter: parent.horizontalCenter
         }
-        spacing: 4
+        spacing: 10
 
         BarGroup {
             id: leftCenterGroup
@@ -161,7 +161,9 @@ Item { // Bar content region
         MouseArea {
             id: rightCenterGroup
             anchors.verticalCenter: parent.verticalCenter
-            implicitWidth: root.centerSideModuleWidth
+            // Grow past the nominal width when the clock + utils + battery don't fit,
+            // otherwise the children overlap each other
+            implicitWidth: Math.max(root.centerSideModuleWidth, rightCenterGroupContent.implicitWidth)
             implicitHeight: rightCenterGroupContent.implicitHeight
 
             onPressed: {
