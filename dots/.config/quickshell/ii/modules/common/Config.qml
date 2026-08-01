@@ -288,9 +288,11 @@ Singleton {
 
             property JsonObject battery: JsonObject {
                 property int low: 20
-                property int critical: 5
+                property int critical: 10
                 property int full: 101
-                property bool automaticSuspend: true
+                // Suspend is left to UPower (PercentageAction/CriticalPowerAction in
+                // /etc/UPower/UPower.conf), which hibernates instead of suspending.
+                property bool automaticSuspend: false
                 property int suspend: 3
             }
 
