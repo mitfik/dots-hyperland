@@ -50,32 +50,79 @@ Singleton {
     })()
 
 
-    onIsLowAndNotChargingChanged: {
-        if (!root.available || !isLowAndNotCharging) return;
+    // Ids of the sticky charge warnings, so they can be closed again once the
+    // charger is plugged in (or the battery otherwise recovers)
+    property int lowNotificationId: 0
+    property int criticalNotificationId: 0
+
+    function closeNotification(id) {
+        if (id <= 0) return;
         Quickshell.execDetached([
-            "notify-send", 
-            Translation.tr("Low battery"), 
-            Translation.tr("Consider plugging in your device"), 
+            "gdbus", "call", "--session",
+            "--dest", "org.freedesktop.Notifications",
+            "--object-path", "/org/freedesktop/Notifications",
+            "--method", "org.freedesktop.Notifications.CloseNotification",
+            String(id),
+        ]);
+    }
+
+    // `-t 0` makes the popup stay until it's dismissed, `-p` prints the id so
+    // it can be closed programmatically
+    Process {
+        id: lowNotifProc
+        stdout: StdioCollector {
+            onStreamFinished: root.lowNotificationId = parseInt(text.trim()) || 0
+        }
+    }
+    Process {
+        id: criticalNotifProc
+        stdout: StdioCollector {
+            onStreamFinished: root.criticalNotificationId = parseInt(text.trim()) || 0
+        }
+    }
+
+    onIsLowAndNotChargingChanged: {
+        if (!root.available) return;
+        if (!isLowAndNotCharging) {
+            root.closeNotification(root.lowNotificationId);
+            root.lowNotificationId = 0;
+            return;
+        }
+        lowNotifProc.running = false;
+        lowNotifProc.command = [
+            "notify-send",
+            Translation.tr("Low battery"),
+            Translation.tr("Consider plugging in your device"),
             "-u", "critical",
             "-a", "Shell",
-            "--hint=int:transient:1",
-        ])
+            "-t", "0",
+            "-p",
+        ];
+        lowNotifProc.running = true;
 
         if (root.soundEnabled) Audio.playSystemSound("dialog-warning");
     }
 
     onIsCriticalAndNotChargingChanged: {
-        if (!root.available || !isCriticalAndNotCharging) return;
-        Quickshell.execDetached([
-            "notify-send", 
-            Translation.tr("Critically low battery"), 
+        if (!root.available) return;
+        if (!isCriticalAndNotCharging) {
+            root.closeNotification(root.criticalNotificationId);
+            root.criticalNotificationId = 0;
+            return;
+        }
+        criticalNotifProc.running = false;
+        criticalNotifProc.command = [
+            "notify-send",
+            Translation.tr("Critically low battery"),
             root.allowAutomaticSuspend
                 ? Translation.tr("Please charge!\nAutomatic suspend triggers at %1%").arg(Config.options.battery.suspend)
                 : Translation.tr("Please charge!\nThe system will hibernate when the battery runs out"),
             "-u", "critical",
             "-a", "Shell",
-            "--hint=int:transient:1",
-        ]);
+            "-t", "0",
+            "-p",
+        ];
+        criticalNotifProc.running = true;
 
         if (root.soundEnabled) Audio.playSystemSound("suspend-error");
     }
