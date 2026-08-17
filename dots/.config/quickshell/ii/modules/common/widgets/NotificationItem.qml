@@ -27,23 +27,9 @@ Item { // Notification item area
             Notifications.attemptInvokeAction(notificationObject.notificationId, "default");
     }
 
-    property real dragConfirmThreshold: 70 // Drag further to discard notification
-    property real dismissOvershoot: notificationIcon.implicitWidth + 20 // Account for gaps and bouncy animations
-    property var qmlParent: root?.parent?.parent // There's something between this and the parent ListView
-    property var parentDragIndex: qmlParent?.dragIndex ?? -1
-    property var parentDragDistance: qmlParent?.dragDistance ?? 0
-    property var dragIndexDiff: Math.abs(parentDragIndex - index)
-    property real xOffset: dragIndexDiff == 0 ? parentDragDistance : 
-        Math.abs(parentDragDistance) > dragConfirmThreshold ? 0 :
-        dragIndexDiff == 1 ? (parentDragDistance * 0.3) :
-        dragIndexDiff == 2 ? (parentDragDistance * 0.1) : 0
-
     implicitHeight: background.implicitHeight
 
-    function destroyWithAnimation(left = false) {
-        root.qmlParent.resetDrag()
-        background.anchors.leftMargin = background.anchors.leftMargin; // Break binding
-        destroyAnimation.left = left;
+    function destroyWithAnimation() {
         destroyAnimation.running = true;
     }
 
@@ -53,58 +39,36 @@ Item { // Notification item area
         text: root.notificationObject.summary || ""
     }
 
-    SequentialAnimation { // Drag finish animation
+    SequentialAnimation { // Dismiss animation
         id: destroyAnimation
-        property bool left: true
         running: false
 
         NumberAnimation {
-            target: background.anchors
-            property: "leftMargin"
-            to: (root.width + root.dismissOvershoot) * (destroyAnimation.left ? -1 : 1)
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            target: root
+            property: "opacity"
+            to: 0
+            duration: Appearance.animation.elementMoveFast.duration
+            easing.type: Appearance.animation.elementMoveFast.type
+            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
         }
         onFinished: () => {
             Notifications.discardNotification(notificationObject.notificationId);
         }
     }
 
-    DragManager { // Drag manager
-        id: dragManager
+    MouseArea { // Click area: dismissal happens through the close button, not by swiping
+        id: itemMouseArea
         anchors.fill: root
         anchors.leftMargin: root.expanded ? -notificationIcon.implicitWidth : 0
-        interactive: expanded
-        automaticallyReset: false
+        hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         cursorShape: root.hasDefaultAction ? Qt.PointingHandCursor : Qt.ArrowCursor
 
         onClicked: (mouse) => {
-            if (mouse.button === Qt.MiddleButton) {
+            if (mouse.button === Qt.MiddleButton)
                 root.destroyWithAnimation();
-            }
-        }
-
-        onDraggingChanged: () => {
-            if (dragging) {
-                root.qmlParent.dragIndex = root.index ?? root.parent.children.indexOf(root);
-            }
-        }
-
-        onDragDiffXChanged: () => {
-            root.qmlParent.dragDistance = dragDiffX;
-        }
-
-        onDragReleased: (diffX, diffY) => {
-            if (Math.abs(diffX) > root.dragConfirmThreshold) {
-                root.destroyWithAnimation(diffX < 0);
-                return;
-            }
-            // A near-stationary release is a click: invoke the default action.
-            if (Math.abs(diffX) < 8 && Math.abs(diffY) < 8)
+            else
                 root.invokeDefaultAction();
-            dragManager.resetDrag();
         }
     }
 
@@ -128,16 +92,6 @@ Item { // Notification item area
         width: parent.width
         anchors.left: parent.left
         radius: Appearance.rounding.small
-        anchors.leftMargin: root.xOffset
-
-        Behavior on anchors.leftMargin {
-            enabled: !dragManager.dragging
-            NumberAnimation {
-                duration: Appearance.animation.elementMove.duration
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
-            }
-        }
 
         color: (expanded && !onlyNotification) ? 
             (notificationObject.urgency == NotificationUrgency.Critical) ? 
@@ -164,7 +118,7 @@ Item { // Notification item area
                 id: summaryRow
                 visible: !root.onlyNotification || !root.expanded
                 Layout.fillWidth: true
-                implicitHeight: summaryText.implicitHeight
+                implicitHeight: Math.max(summaryText.implicitHeight, itemCloseButton.visible ? itemCloseButton.implicitHeight : 0)
                 StyledText {
                     id: summaryText
                     Layout.fillWidth: summaryTextMetrics.width >= summaryRow.implicitWidth * root.summaryElideRatio
@@ -189,6 +143,18 @@ Item { // Notification item area
                     textFormat: Text.StyledText
                     text: {
                         return NotificationUtils.processNotificationBody(notificationObject.body, notificationObject.appName || notificationObject.summary).replace(/\n/g, "<br/>")
+                    }
+                }
+                NotificationCloseButton { // Dismisses this single notification
+                    id: itemCloseButton
+                    // Only in an expanded group: elsewhere the group's own close
+                    // button (or the expanded "Close" action) does the job.
+                    visible: root.expanded && !root.onlyNotification
+                    iconSize: root.fontSize
+                    onClicked: { root.destroyWithAnimation() }
+
+                    StyledToolTip {
+                        text: Translation.tr("Dismiss")
                     }
                 }
             }

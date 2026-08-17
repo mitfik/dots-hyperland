@@ -21,21 +21,7 @@ MouseArea { // Notification group area
     property real padding: 10
     implicitHeight: background.implicitHeight
 
-    property real dragConfirmThreshold: 70 // Drag further to discard notification
-    property real dismissOvershoot: 20 // Account for gaps and bouncy animations
-    property var qmlParent: root?.parent?.parent // There's something between this and the parent ListView
-    property var parentDragIndex: qmlParent?.dragIndex
-    property var parentDragDistance: qmlParent?.dragDistance
-    property var dragIndexDiff: Math.abs(parentDragIndex - index)
-    property real xOffset: dragIndexDiff == 0 ? parentDragDistance : 
-        Math.abs(parentDragDistance) > dragConfirmThreshold ? 0 :
-        dragIndexDiff == 1 ? (parentDragDistance * 0.3) :
-        dragIndexDiff == 2 ? (parentDragDistance * 0.1) : 0
-
-    function destroyWithAnimation(left = false) {
-        root.qmlParent.resetDrag()
-        background.anchors.leftMargin = background.anchors.leftMargin; // Break binding
-        destroyAnimation.left = left;
+    function destroyWithAnimation() {
         destroyAnimation.running = true;
     }
 
@@ -66,18 +52,17 @@ MouseArea { // Notification group area
         });
     }
 
-    SequentialAnimation { // Drag finish animation
+    SequentialAnimation { // Dismiss animation
         id: destroyAnimation
-        property bool left: true
         running: false
 
         NumberAnimation {
-            target: background.anchors
-            property: "leftMargin"
-            to: (root.width + root.dismissOvershoot) * (destroyAnimation.left ? -1 : 1)
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            target: root
+            property: "opacity"
+            to: 0
+            duration: Appearance.animation.elementMoveFast.duration
+            easing.type: Appearance.animation.elementMoveFast.type
+            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
         }
         onFinished: () => {
             Notifications.discardNotifications(root.notifications.map((notif) => notif.notificationId));
@@ -90,44 +75,18 @@ MouseArea { // Notification group area
         root.expanded = !root.expanded;
     }
 
-    DragManager { // Drag manager
-        id: dragManager
+    MouseArea { // Click area: dismissal happens through the close button, not by swiping
         anchors.fill: parent
-        interactive: !expanded
-        automaticallyReset: false
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         cursorShape: (!root.expanded && root.hasDefaultAction) ? Qt.PointingHandCursor : Qt.ArrowCursor
 
-        onPressed: (mouse) => {
+        onClicked: (mouse) => {
             if (mouse.button === Qt.RightButton)
                 root.toggleExpanded();
-        }
-
-        onClicked: (mouse) => {
-            if (mouse.button === Qt.MiddleButton)
+            else if (mouse.button === Qt.MiddleButton)
                 root.destroyWithAnimation();
-        }
-
-        onDraggingChanged: () => {
-            if (dragging) {
-                root.qmlParent.dragIndex = root.index ?? root.parent.children.indexOf(root);
-            }
-        }
-
-        onDragDiffXChanged: () => {
-            root.qmlParent.dragDistance = dragDiffX;
-        }
-
-        onDragReleased: (diffX, diffY) => {
-            if (Math.abs(diffX) > root.dragConfirmThreshold) {
-                root.destroyWithAnimation(diffX < 0);
-                return;
-            }
-            // A near-stationary release on the collapsed group is a click:
-            // invoke the default action (jumps to the app) if there is one.
-            if (Math.abs(diffX) < 8 && Math.abs(diffY) < 8)
+            else if (!root.expanded)
                 root.invokeDefaultAction();
-            dragManager.resetDrag();
         }
     }
 
@@ -141,17 +100,7 @@ MouseArea { // Notification group area
         width: parent.width
         color: popup ? Appearance.colors.colBackgroundSurfaceContainer : Appearance.colors.colLayer2
         radius: Appearance.rounding.normal
-        anchors.leftMargin: root.xOffset
 
-        Behavior on anchors.leftMargin {
-            enabled: !dragManager.dragging
-            NumberAnimation {
-                duration: Appearance.animation.elementMove.duration
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
-            }
-        }
-        
         clip: true
         implicitHeight: root.expanded ? 
             row.implicitHeight + padding * 2 :
@@ -196,7 +145,7 @@ MouseArea { // Notification group area
                     Layout.fillWidth: true
                     property real fontSize: Appearance.font.pixelSize.smaller
                     property bool showAppName: root.multipleNotifications
-                    implicitHeight: Math.max(topTextRow.implicitHeight, expandButton.implicitHeight)
+                    implicitHeight: Math.max(topTextRow.implicitHeight, expandButton.implicitHeight, closeButton.implicitHeight)
 
                     RowLayout {
                         id: topTextRow
@@ -230,7 +179,8 @@ MouseArea { // Notification group area
                     }
                     NotificationGroupExpandButton {
                         id: expandButton
-                        anchors.right: parent.right
+                        anchors.right: closeButton.left
+                        anchors.rightMargin: 2
                         anchors.verticalCenter: parent.verticalCenter
                         count: root.notificationCount
                         expanded: root.expanded
@@ -240,6 +190,19 @@ MouseArea { // Notification group area
 
                         StyledToolTip {
                             text: Translation.tr("Tip: right-clicking a group\nalso expands it")
+                        }
+                    }
+                    NotificationCloseButton { // Dismisses the whole group
+                        id: closeButton
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        iconSize: Appearance.font.pixelSize.normal
+                        onClicked: { root.destroyWithAnimation() }
+
+                        StyledToolTip {
+                            text: root.multipleNotifications ?
+                                Translation.tr("Dismiss all from this app") :
+                                Translation.tr("Dismiss")
                         }
                     }
                 }
