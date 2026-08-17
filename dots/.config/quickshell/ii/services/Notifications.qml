@@ -74,9 +74,14 @@ Singleton {
     }
 
     property bool silent: false
-    property int unread: 0
     property var filePath: Directories.notificationsPath
     property list<Notif> list: []
+    // Derived from the persisted "last read" mark instead of a runtime counter, so the
+    // bar indicator survives a shell restart and still counts notifications that never
+    // got a popup (do not disturb, or a popup that expired while nobody was looking).
+    // Everything counts as read until the persisted state has actually loaded.
+    property int unread: !Persistent.ready ? 0
+        : root.list.filter((notif) => notif.time > Persistent.states.notifications.lastReadTime).length
     property var popupList: list.filter((notif) => notif.popup);
     property bool popupInhibited: (GlobalStates?.sidebarRightOpen ?? false) || silent
     property var latestTimeForApp: ({})
@@ -207,7 +212,6 @@ Singleton {
                         "interval": notification.expireTimeout < 0 ? (Config?.options.notifications.timeout ?? 7000) : notification.expireTimeout,
                     });
                 }
-                root.unread++;
             }
             root.notify(newNotifObject);
             // console.log(notifToString(newNotifObject));
@@ -216,7 +220,7 @@ Singleton {
     }
 
     function markAllRead() {
-        root.unread = 0;
+        Persistent.states.notifications.lastReadTime = Date.now();
     }
 
     function discardNotification(id) {
@@ -292,8 +296,24 @@ Singleton {
         notifFileView.reload()
     }
 
+    // Without a read mark yet (first run after the feature landed), start from now instead
+    // of retroactively declaring the whole saved history unread.
+    function initReadMark() {
+        if (Persistent.ready && Persistent.states.notifications.lastReadTime === 0) {
+            root.markAllRead();
+        }
+    }
+
+    Connections {
+        target: Persistent
+        function onReadyChanged() {
+            root.initReadMark();
+        }
+    }
+
     Component.onCompleted: {
         refresh()
+        initReadMark()
     }
 
     FileView {

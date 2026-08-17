@@ -278,7 +278,7 @@ Singleton {
                 }
                 property JsonObject indicators: JsonObject {
                     property JsonObject notifications: JsonObject {
-                        property bool showUnreadCount: false
+                        property bool showUnreadCount: true
                     }
                 }
                 property JsonObject tooltips: JsonObject {

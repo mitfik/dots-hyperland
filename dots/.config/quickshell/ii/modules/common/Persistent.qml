@@ -67,6 +67,11 @@ Singleton {
                 property int tabIndex: 0
             }
 
+            property JsonObject notifications: JsonObject {
+                // Epoch ms of the last time the user looked at the notification list
+                property double lastReadTime: 0
+            }
+
             property JsonObject sidebar: JsonObject {
                 property JsonObject bottomGroup: JsonObject {
                     property bool collapsed: false
