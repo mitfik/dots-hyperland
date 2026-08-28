@@ -44,6 +44,13 @@ MouseArea {
             warningThreshold: Config.options.bar.resources.diskWarningThreshold
         }
 
+        Resource {
+            Layout.alignment: Qt.AlignHCenter
+            iconName: "memory_alt"
+            percentage: ResourceUsage.tmpfsUsedPercentage
+            warningThreshold: Config.options.bar.resources.tmpfsWarningThreshold
+        }
+
     }
 
     Bar.ResourcesPopup {

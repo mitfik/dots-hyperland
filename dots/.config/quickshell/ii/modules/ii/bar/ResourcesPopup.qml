@@ -118,5 +118,34 @@ StyledPopup {
                 }
             }
         }
+
+        Column {
+            visible: ResourceUsage.tmpfsTotal > 0
+            anchors.top: parent.top
+            spacing: 8
+
+            StyledPopupHeaderRow {
+                icon: "memory_alt"
+                label: ResourceUsage.tmpfsPath
+            }
+            Column {
+                spacing: 4
+                StyledPopupValueRow {
+                    icon: "clock_loader_60"
+                    label: Translation.tr("Used:")
+                    value: root.formatKB(ResourceUsage.tmpfsUsed)
+                }
+                StyledPopupValueRow {
+                    icon: "check_circle"
+                    label: Translation.tr("Free:")
+                    value: root.formatKB(ResourceUsage.tmpfsFree)
+                }
+                StyledPopupValueRow {
+                    icon: "empty_dashboard"
+                    label: Translation.tr("Total:")
+                    value: root.formatKB(ResourceUsage.tmpfsTotal)
+                }
+            }
+        }
     }
 }

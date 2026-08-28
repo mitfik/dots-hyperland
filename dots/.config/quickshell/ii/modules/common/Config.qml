@@ -244,10 +244,12 @@ Singleton {
                     property bool alwaysShowSwap: true
                     property bool alwaysShowCpu: true
                     property bool alwaysShowDisk: true
+                    property bool alwaysShowTmpfs: true
                     property int memoryWarningThreshold: 90
                     property int swapWarningThreshold: 90
                     property int cpuWarningThreshold: 90
                     property int diskWarningThreshold: 90
+                    property int tmpfsWarningThreshold: 80
                 }
                 property list<string> screenList: [] // List of names, like "eDP-1", find out with 'hyprctl monitors' command
                 property JsonObject utilButtons: JsonObject {
@@ -465,6 +467,7 @@ Singleton {
             property JsonObject resources: JsonObject {
                 property int updateInterval: 3000
                 property int historyLength: 60
+                property string tmpfsPath: "/tmp" // Mount point shown by the tmpfs indicator
             }
 
             property JsonObject tray: JsonObject {

@@ -55,6 +55,16 @@ MouseArea {
             warningThreshold: Config.options.bar.resources.diskWarningThreshold
         }
 
+        Resource {
+            iconName: "memory_alt"
+            percentage: ResourceUsage.tmpfsUsedPercentage
+            shown: Config.options.bar.resources.alwaysShowTmpfs ||
+                !(MprisController.activePlayer?.trackTitle?.length > 0) ||
+                root.alwaysShowAllResources
+            Layout.leftMargin: shown ? 6 : 0
+            warningThreshold: Config.options.bar.resources.tmpfsWarningThreshold
+        }
+
     }
 
     ResourcesPopup {

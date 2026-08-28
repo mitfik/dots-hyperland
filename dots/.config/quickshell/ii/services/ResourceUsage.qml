@@ -27,17 +27,26 @@ Singleton {
     property real diskFree: 0
     property real diskTotal: diskUsed + diskFree
     property real diskUsedPercentage: (diskUsed + diskFree) > 0 ? (diskUsed / (diskUsed + diskFree)) : 0
+    // Usage of the tmpfs mount (defaults to "/tmp"), in KB. Build trees and test
+    // runs live here, so it fills up much faster than the root filesystem.
+    readonly property string tmpfsPath: Config?.options.resources.tmpfsPath ?? "/tmp"
+    property real tmpfsUsed: 0
+    property real tmpfsFree: 0
+    property real tmpfsTotal: tmpfsUsed + tmpfsFree
+    property real tmpfsUsedPercentage: (tmpfsUsed + tmpfsFree) > 0 ? (tmpfsUsed / (tmpfsUsed + tmpfsFree)) : 0
 
     property string maxAvailableMemoryString: kbToGbString(ResourceUsage.memoryTotal)
     property string maxAvailableSwapString: kbToGbString(ResourceUsage.swapTotal)
     property string maxAvailableCpuString: "--"
     property string maxAvailableDiskString: kbToGbString(ResourceUsage.diskTotal)
+    property string maxAvailableTmpfsString: kbToGbString(ResourceUsage.tmpfsTotal)
 
     readonly property int historyLength: Config?.options.resources.historyLength ?? 60
     property list<real> cpuUsageHistory: []
     property list<real> memoryUsageHistory: []
     property list<real> swapUsageHistory: []
     property list<real> diskUsageHistory: []
+    property list<real> tmpfsUsageHistory: []
 
     function kbToGbString(kb) {
         return (kb / (1024 * 1024)).toFixed(1) + " GB";
@@ -67,11 +76,18 @@ Singleton {
             diskUsageHistory.shift()
         }
     }
+    function updateTmpfsUsageHistory() {
+        tmpfsUsageHistory = [...tmpfsUsageHistory, tmpfsUsedPercentage]
+        if (tmpfsUsageHistory.length > historyLength) {
+            tmpfsUsageHistory.shift()
+        }
+    }
     function updateHistories() {
         updateMemoryUsageHistory()
         updateSwapUsageHistory()
         updateCpuUsageHistory()
         updateDiskUsageHistory()
+        updateTmpfsUsageHistory()
     }
 
 	Timer {
@@ -109,6 +125,7 @@ Singleton {
 
             // Disk usage is read via `df` instead of /proc, so poll it here
             diskProc.running = true
+            tmpfsProc.running = true
 
             root.updateHistories()
             interval = Config.options?.resources?.updateInterval ?? 3000
@@ -132,6 +149,25 @@ Singleton {
                 if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
                     root.diskUsed = parts[0]
                     root.diskFree = parts[1]
+                }
+            }
+        }
+    }
+
+    Process {
+        id: tmpfsProc
+        environment: ({
+            LANG: "C",
+            LC_ALL: "C"
+        })
+        command: ["bash", "-c", `df -k --output=used,avail ${root.tmpfsPath} | tail -1`]
+        stdout: StdioCollector {
+            id: tmpfsCollector
+            onStreamFinished: {
+                const parts = tmpfsCollector.text.trim().split(/\s+/).map(Number)
+                if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    root.tmpfsUsed = parts[0]
+                    root.tmpfsFree = parts[1]
                 }
             }
         }
