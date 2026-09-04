@@ -156,7 +156,9 @@ Singleton {
                 property string networkEthernet: "kcmshell6 kcm_networkmanagement"
                 property string taskManager: "plasma-systemmonitor --page-name Processes"
                 property string terminal: "kitty -1" // This is only for shell actions
-                property string update: "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'"
+                // Prefer an AUR helper so the upgrade covers the AUR too, and fall
+                // back to plain pacman when none is installed
+                property string update: "kitty -1 --hold=yes fish -i -c 'if command -q paru; paru -Syu; else if command -q yay; yay -Syu; else; pkexec pacman -Syu; end'"
                 property string volumeMixer: `~/.config/hypr/hyprland/scripts/launch_first_available.sh "pavucontrol-qt" "pavucontrol"`
             }
 
@@ -281,6 +283,10 @@ Singleton {
                 property JsonObject indicators: JsonObject {
                     property JsonObject notifications: JsonObject {
                         property bool showUnreadCount: true
+                    }
+                    property JsonObject updates: JsonObject {
+                        property bool enable: true
+                        property bool showCount: true
                     }
                 }
                 property JsonObject tooltips: JsonObject {
@@ -572,7 +578,9 @@ Singleton {
 
             property JsonObject updates: JsonObject {
                 property bool enableCheck: true
-                property int checkInterval: 120 // minutes
+                property bool checkAur: true // Also count AUR updates, if a helper is installed
+                property string aurHelper: "" // Leave empty to auto-detect (paru, yay, ...)
+                property int checkInterval: 1440 // minutes; once a day is enough for a rolling release
                 property int adviseUpdateThreshold: 75 // packages
                 property int stronglyAdviseUpdateThreshold: 200 // packages
             }

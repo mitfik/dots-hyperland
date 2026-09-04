@@ -202,6 +202,22 @@ Item { // Bar content region
                 invertSide: Config?.options.bar.bottom
             }
 
+            // Pending updates, kept outside the sidebar button so a click can
+            // start the upgrade instead of toggling the sidebar
+            Loader {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
+                active: Config.options.bar.indicators.updates.enable && Updates.updatesAvailable
+
+                sourceComponent: Bar.BarGroup {
+                    vertical: true
+                    Bar.UpdatesIndicator {
+                        vertical: true
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+                }
+            }
+
             RippleButton { // Right sidebar button
                 id: rightSidebarButton
 

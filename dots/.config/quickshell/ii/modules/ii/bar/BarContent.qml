@@ -330,6 +330,18 @@ Item { // Bar content region
                 invertSide: Config?.options.bar.bottom
             }
 
+            // Pending updates, kept outside the sidebar button so a click can
+            // start the upgrade instead of toggling the sidebar
+            Loader {
+                Layout.alignment: Qt.AlignVCenter
+                Layout.rightMargin: 4
+                active: Config.options.bar.indicators.updates.enable && Updates.updatesAvailable
+
+                sourceComponent: BarGroup {
+                    UpdatesIndicator {}
+                }
+            }
+
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
